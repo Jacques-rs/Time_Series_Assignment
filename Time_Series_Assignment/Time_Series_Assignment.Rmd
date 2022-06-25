@@ -4,7 +4,7 @@
 # The descriptions below should be self-explanatory
 
 title: "Time Series Research Assignment"
-subtitle: "Paper Replication: Estimation of the equilibrium real exchange rate for South Africa (MacDonald & Ricci, 2004)"
+subtitle: "A Replication: Estimation of the Equilibrium Real Exchange Rate for South Africa [@mainpaper]"
 
 documentclass: "elsarticle"
 
@@ -75,7 +75,7 @@ csl: Tex/harvard-stellenbosch-university.csl # referencing format used.
 # ---------- General:
 RemovePreprintSubmittedTo: TRUE  # Removes the 'preprint submitted to...' at bottom of titlepage
 # Journal: "Journal of Finance"   # Journal that the paper will be submitting to, if RemovePreprintSubmittedTo is set to TRUE.
-toc: FALSE                       # Add a table of contents
+toc: TRUE                       # Add a table of contents
 numbersections: TRUE             # Should sections (and thus figures and tables) be numbered?
 fontsize: 11pt                  # Set fontsize
 linestretch: 1.2                # Set distance between lines.
@@ -104,9 +104,9 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.pos = 'H', purl = TRUE)
 library(pacman)
 
-pacman::p_load(tidyverse, dplyr, stargaze, readr, MASS, lubridate)
+pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, vars, dynlm, 
+               tsDym)
 fmxdat::source_all("./code")
-
 ```
 
 
@@ -114,16 +114,43 @@ fmxdat::source_all("./code")
 <!-- # Start Writing here: -->
 <!-- ############################## -->
 
-
+\newpage
 
 # Introduction
 
+
+* What did I do?
+This paper is a replication and critical evaluation of the research paper by 
+@mainpaper.
+
+* why did I do this?
+
+
+# Literature Review
+
+
+## What did the Authors do?
+
+
+## Motivation
+* Importance
+* Methods
+* Novel Contribution(s)
+
+
+## Critical Evaluation
+* Robustness checks/extensions
+
+
+# Replication
 
 
 
 # Importing and Cleaning the Data
 
+
 ## Importing the full dataset:
+
 
 ```{r}
 full_df <- fetch_full()
@@ -140,35 +167,181 @@ full_df
 ```
 
 
-## Log of Real Effective Exchange Rate for SA (LREER)
-
-Importing the `LREER` time series:
+## Variable Names (SECTION TO BE DELETED)
 
 ```{r}
-LREER <- lreer_fetch()
-# # check whetther there are any `NA` vales in the dataset
-# LREER %>% select(Value) %>% any(is.na(.))
-LREER
-```
-
-
-cleaning the lreer dataset
-```{r}
-# Convert the date column to the correct format
-LREER <- lreer_wrangle_date(LREER)
-
-# And change the base year from 2015 to 1995 as in the paper
-LREER <-lreer_rebase(LREER)
-LREER
+as_tibble(names(full_df))
 ```
 
 
 
-## Real Interest Rate Relative to Trading Partners
+
+
+
+## Plotting the Variables of Interest
+
+
+### Plotting REERS:
+
 
 ```{r}
-RIRR <- rirr_fetch()
-RIRR
+plot_endog1(full_df)
 ```
+
+
+
+### Plotting the determinants of the Real Effective Exchange Rate:
+
+
+```{r fig.width=7}
+
+plot_endog2(df = full_df)
+
+```
+
+
+## VECM Model Estimation:
+
+_Multiple ways to estimate VEC models:_
+
+_First approach: ordinary least squares (yields accurate result) but does not allow to estimate the cointegrating relations among the variables._
+_The estimated generalised least squares (EGLS) approach would be an alternative._
+
+_Most popular estimator: MLE of Johansen (1995)_
+_[In R: ca.jo function of the urca package of Pfaff (2008a)]_
+_Alternatively, `VECM` of tsDyn package of Di Narzo et al. (2020)_
+
+_Before VECM:_
+_1. Determine lag order p -> Det. rank of CI matrix r_
+_2. deterministic terms have to be specified._
+_3. Choose lag order: est. the VAR in levels_
+_4. Choose lag specification that minimises an Information criterion_
+
+
+
+### Determine the Lag Order
+
+
+```{r}
+# var_aic <- 
+    
+```
+
+
+
+
+
+
+```{r}
+# 
+# endog_df <- split_data_endog(full_df)
+# exog_df <- split_data_exog(full_df)
+# 
+# 
+# mod <- VECM(data = endog_df[,2:8], lag = 4, r = 1,
+#            include = "const", estim = "ML", exogen = exog_df[,2:4])
+# 
+# mod_summ <- summary(mod)
+
+
+# mod <- dynlm(full_df$LREERS ~ full_df$RIRR + full_df$LRGDPPCR + full_df$OPENY
+#            + full_df$FBYA + full_df$NFAOFPY + full_df$LPR2COMM5
+#            + full_df$DUMNFAOFPY + full_df$DUMRER1
+#            + full_df$DUMRER2 + full_df$DUMFBYA + full_df$SDUMC1
+#            + full_df$SDUMC2 + full_df$SDUMC3,
+#            lag = 4,
+#            include = "const", estim = "ML", exog
+#            exogen = exog_df[,2:8])
+```
+
+```{r results='asis', message=F, comment='%', tidy=T}
+
+# stargazer(mod_summ$model, header = FALSE)
+
+```
+
+
+
+
+
+
+
+<!-- # Data and Methodology -->
+
+<!-- ## Plotting the Real Effective Exchange Rate -->
+
+
+<!-- ```{r} -->
+<!-- lreer_plot <- full_df %>% dplyr::select(date, LREERS) %>%  -->
+<!--     ggplot() + -->
+<!--     geom_line(aes(x = date, y = exp(LREERS)), col = "steelblue") + -->
+<!--     labs(title = "South African Real Effective Exchange Rate") + -->
+<!--     scale_y_continuous("Real Effective Exchange Rate") + -->
+<!--     scale_x_date("Date") -->
+
+<!-- lreer_plot -->
+<!-- ``` -->
+
+
+
+# Directly from [@mainpaper]
+
+
+
+
+
+## Section 3 Data and Methodology
+
+* Plotting the exp(LREER) and the rest of the variables
+* Showcase the vector of interest
+* Investigate LR CI Rel's amongst var's in vector
+    - Method: MLE of @johansenMLE
+    - Why? Corrects for Autocorr and ednog parametrically using VECM specif.
+    - Key Advantage: the estimated coefficient - the $\beta$ vector - can be used to 
+    provide a measure of the equilibrium real exchange rate and therefore a 
+    quantification of the gap between the prevailing real exchange rate and 
+    its equilibrium level. The methodology also derives estimates of the speed 
+    at which the real exchange rates converges to the equilibrium level.
+
+
+    
+
+
+
+
+
+
+# Old Stuff
+
+<!-- ## Log of Real Effective Exchange Rate for SA (LREER) -->
+
+<!-- Importing the `LREER` time series: -->
+
+<!-- ```{r} -->
+<!-- # LREER <- lreer_fetch() -->
+<!-- # # # check whetther there are any `NA` vales in the dataset -->
+<!-- # # LREER %>% select(Value) %>% any(is.na(.)) -->
+<!-- # LREER -->
+<!-- ``` -->
+
+
+<!-- cleaning the lreer dataset -->
+<!-- ```{r} -->
+<!-- # Convert the date column to the correct format -->
+<!-- # LREER <- lreer_wrangle_date(LREER) -->
+<!-- #  -->
+<!-- # # And change the base year from 2015 to 1995 as in the paper -->
+<!-- # LREER <-lreer_rebase(LREER) -->
+<!-- # LREER -->
+<!-- ``` -->
+
+
+
+<!-- ## Real Interest Rate Relative to Trading Partners -->
+
+<!-- ```{r} -->
+<!-- # RIRR <- rirr_fetch() -->
+<!-- # RIRR -->
+<!-- ``` -->
 
 
