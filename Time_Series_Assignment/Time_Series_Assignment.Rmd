@@ -102,7 +102,7 @@ abstract: |
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
                       fig.width = 6, fig.height = 5, fig.pos="H", 
                       fig.pos = 'H', purl = TRUE)
-
+library(pacman)
 
 pacman::p_load(tidyverse, dplyr, stargaze, readr, MASS, lubridate)
 fmxdat::source_all("./code")
@@ -123,7 +123,24 @@ fmxdat::source_all("./code")
 
 # Importing and Cleaning the Data
 
-## LREER
+## Importing the full dataset:
+
+```{r}
+full_df <- fetch_full()
+full_df
+```
+
+
+## Wrangling the dataset
+
+
+```{r}
+full_df <- full_clean(full_df)
+full_df
+```
+
+
+## Log of Real Effective Exchange Rate for SA (LREER)
 
 Importing the `LREER` time series:
 
@@ -147,4 +164,11 @@ LREER
 
 
 
-## 
+## Real Interest Rate Relative to Trading Partners
+
+```{r}
+RIRR <- rirr_fetch()
+RIRR
+```
+
+
