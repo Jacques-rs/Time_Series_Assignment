@@ -4,7 +4,7 @@
 # The descriptions below should be self-explanatory
 
 title: "Time Series Research Assignment"
-#subtitle: "This will appear as Right Header"
+subtitle: "Paper Replication: Estimation of the equilibrium real exchange rate for South Africa (MacDonald & Ricci, 2004)"
 
 documentclass: "elsarticle"
 
@@ -25,8 +25,8 @@ Thesis_FP: FALSE
 # --------- Front Page
 # Comment: ----- Follow this pattern for up to 5 authors
 AddTitle: TRUE # Use FALSE when submitting to peer reviewed platform. This will remove author names.
-Author1: "Jacques Rossouw"  # First Author - note the thanks message displayed as an italic footnote of first page.
-Ref1: "Prescient Securities, Cape Town, South Africa" # First Author's Affiliation
+Author1: "Jacques Rossouw - 21159793"  # First Author - note the thanks message displayed as an italic footnote of first page.
+Ref1: "Stellenbosch, Western Cape, South Africa" # First Author's Affiliation
 Email1: "gerardrossouw\\@gmail.com" # First Author's Email address
 
 # Author2: "John Smith"
@@ -47,7 +47,7 @@ Email1: "gerardrossouw\\@gmail.com" # First Author's Email address
 #BottomLFooter: $Title$
 #BottomCFooter:
 #TopLHeader: \leftmark # Adds section name at topleft. Remove comment to add it.
-BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
+# BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
 addtoprule: TRUE
 addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
 
@@ -104,7 +104,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.pos = 'H', purl = TRUE)
 
 
-pacman::p_load(tidyverse, dplyr, stargaze)
+pacman::p_load(tidyverse, dplyr, stargaze, readr, MASS, lubridate)
+fmxdat::source_all("./code")
 
 ```
 
@@ -122,4 +123,28 @@ pacman::p_load(tidyverse, dplyr, stargaze)
 
 # Importing and Cleaning the Data
 
+## LREER
 
+Importing the `LREER` time series:
+
+```{r}
+LREER <- lreer_fetch()
+# # check whetther there are any `NA` vales in the dataset
+# LREER %>% select(Value) %>% any(is.na(.))
+LREER
+```
+
+
+cleaning the lreer dataset
+```{r}
+# Convert the date column to the correct format
+LREER <- lreer_wrangle_date(LREER)
+
+# And change the base year from 2015 to 1995 as in the paper
+LREER <-lreer_rebase(LREER)
+LREER
+```
+
+
+
+## 
