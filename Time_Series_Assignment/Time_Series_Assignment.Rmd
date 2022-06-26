@@ -119,6 +119,15 @@ fmxdat::source_all("./code")
 # Introduction
 
 
+The aim of this paper is to replicate the work done by @mainpaper. They analyse
+the determinants of the Real Effective Exchange Rate (REER) based on a collection
+of variables as determinants. The purpose of their study was to find a set of 
+variables with explanatory power in determining the long term behaviour of the 
+REER in South Africa over the period starting from the first quarter of the year
+1970 until the first quarter of the year 2002. Towards this end, they made use 
+of the Maximum Likelihood method of estimating the Vector Error Correction Model
+(VECM) from the paper by @johansenMLE.
+
 * What did I do?
 This paper is a replication and critical evaluation of the research paper by 
 @mainpaper.
@@ -181,7 +190,9 @@ as_tibble(names(full_df))
 ## Plotting the Variables of Interest
 
 
-### Plotting REERS:
+All variables appear as they were before their natural logarithm was determined.
+
+### Plotting the Real Effective Exchange Rate:
 
 
 ```{r}
@@ -190,7 +201,7 @@ plot_endog1(full_df)
 
 
 
-### Plotting the determinants of the Real Effective Exchange Rate:
+### Plotting the Determinants of the Real Effective Exchange Rate:
 
 
 ```{r fig.width=7}
@@ -199,6 +210,49 @@ plot_endog2(df = full_df)
 
 ```
 
+
+The @johansenMLE method requires six steps in the estimation process, which 
+follows as:
+
+1. Choosing a specification for the deterministic parts of the model
+2. Pre-testing the variables in the system to ensure that they are likely 
+integrated of order one (i.e. $x_t \sim I(1)$$)
+3. Estimating the unrestricted Vector Autoregressive model in levels and
+checking this models adequacy
+4. Estimating the VECM form and determining the cointegration rank (i.e. 'r')
+5. etc.
+
+### Plotting the Diffirenced Variables
+
+
+```{r fig.cap="The First Difference of the Real Exchange Rate Time Series"}
+
+test_df <- full_df %>% mutate(across(names(.)[2:13], function(x) x-lag(x))) %>% filter(date > first(date))
+plot_endog1(test_df)
+
+```
+
+
+
+```{r}
+plot_endog2(df = test_df)
+```
+
+The figure above suggest that the REER time series is most likely integrated of 
+order 1 (i.e. $REER \sim I(1)$), and includes a constant term.
+
+To test this hypothesis, the Augmented Dickey Fuller test is employed. The 
+p-value for each opf the differenced time series is less than 0.05 and thus
+the null hypothesis is rejected, and we can conclude that these series are all
+stationary after one difference
+
+```{r}
+
+# Better format this later
+joint_adf_test <- joint_adf(full_df)
+knitr::kable(joint_adf_test)
+
+```
 
 ## VECM Model Estimation:
 
