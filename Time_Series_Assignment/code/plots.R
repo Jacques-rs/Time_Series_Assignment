@@ -8,7 +8,9 @@ plot_endog1 <- function(df){
         mutate(REERS = exp(LREERS), .keep = "unused") %>%
         ggplot() +
         geom_line(aes(x = date, y = REERS)) +
-        scale_y_continuous("Real Effective Exchange Rate")
+        scale_y_continuous("Real Effective Exchange Rate") +
+        geom_vline(xintercept = c(as.Date("1985-12-31"), as.Date("1986-03-31")),
+                    color = "red", show.legend = T)
 
     return(plot)
 }

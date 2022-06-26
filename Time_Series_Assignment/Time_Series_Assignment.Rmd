@@ -104,8 +104,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.pos = 'H', purl = TRUE)
 library(pacman)
 
-pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, vars, dynlm, 
-               tsDym, urca)
+pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, 
+               tsDym, urca, tseries, vars)
 fmxdat::source_all("./code")
 ```
 
@@ -202,6 +202,12 @@ plot_endog2(df = full_df)
 
 ## VECM Model Estimation:
 
+*paper table 1 col's:*
+
+*1. Var's + Seasonal(4) + lags(4)*
+*2. ^Above^ + outlier_dummies -> Trace test* $\implies$ *two CI vectors*
+
+
 _Multiple ways to estimate VEC models:_
 
 _First approach: ordinary least squares (yields accurate result) but does not allow to estimate the cointegrating relations among the variables._
@@ -221,11 +227,19 @@ _4. Choose lag specification that minimises an Information criterion_
 
 ### Determine the Lag Order
 
+First we split the data into the additional dummies and the main variables:
+
+```{r include=FALSE}
+endog_df <- split_data_endog(full_df)
+exog_df <- split_data_exog(full_df)
+endog_df; exog_df
+```
+
 
 ```{r}
 
-var_aic <- VAR(full_df[,2:8], type = "const", lag.max = 8, ic = "AIC")
-
+var_aic <- VAR(endog_df[,c(2:8)], type = "const", lag.max = 8, 
+               ic = "AIC", season = 4)
 var_aic$p
     
 ```
@@ -233,15 +247,35 @@ var_aic$p
 
 ```{r}
 
-vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", K = 4, 
-             spec = "longrun")
+vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", spec = "transitory",
+             K = 4, season = 4)
 
+summary(vec)
 ```
 
 
 ```{r}
-# mod <- VECM(full_df[,2:8], lag = 4, )
 
+vec2 <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", #spec = "transitory",
+             K = 4, season = 4)
+
+summary(vec2)
+```
+
+<!-- ```{r results='asis', message=F, comment='%', tidy=T} -->
+
+<!-- stargazer(summ_vec, header = FALSE, summary = F) -->
+
+<!-- ``` -->
+
+
+```{r}
+
+
+mod1 <- tsDyn::VECM(full_df[,2:8], lag = 4, estim = "ML", include = "const",
+                    r=1, exogen = exog_df$season_dum)
+
+summ <- mod1$model
 ```
 
 
@@ -249,8 +283,6 @@ vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", K = 4,
 
 ```{r}
 # 
-# endog_df <- split_data_endog(full_df)
-# exog_df <- split_data_exog(full_df)
 # 
 # 
 # mod <- VECM(data = endog_df[,2:8], lag = 4, r = 1,
@@ -271,7 +303,7 @@ vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", K = 4,
 
 ```{r results='asis', message=F, comment='%', tidy=T}
 
-# stargazer(mod_summ$model, header = FALSE)
+stargazer(summ, header = FALSE)
 
 ```
 

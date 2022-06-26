@@ -10,7 +10,9 @@ split_data_endog <- function(df){
 
 split_data_exog <- function(df){
 
-    df <- cbind(df[,1], df[,14:20])
+    df <- df %>% cbind(.[,1], .[,14:20]) %>%
+        gather(season, season_dum, 2:4) %>%
+        gather(outlier, outlier_dum, 2:5)
 
     return(df)
 }
