@@ -49,7 +49,7 @@ Email1: "gerardrossouw\\@gmail.com" # First Author's Email address
 #TopLHeader: \leftmark # Adds section name at topleft. Remove comment to add it.
 # BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
 addtoprule: TRUE
-addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
+# addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
 
 # --------- page margins:
 margin: 2.3 # Sides
@@ -105,7 +105,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 library(pacman)
 
 pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, vars, dynlm, 
-               tsDym)
+               tsDym, urca)
 fmxdat::source_all("./code")
 ```
 
@@ -223,11 +223,26 @@ _4. Choose lag specification that minimises an Information criterion_
 
 
 ```{r}
-# var_aic <- 
+
+var_aic <- VAR(full_df[,2:8], type = "const", lag.max = 8, ic = "AIC")
+
+var_aic$p
     
 ```
 
 
+```{r}
+
+vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", K = 4, 
+             spec = "longrun")
+
+```
+
+
+```{r}
+# mod <- VECM(full_df[,2:8], lag = 4, )
+
+```
 
 
 

@@ -36,7 +36,8 @@ plot_endog2 <- function(df){
                                        "Openness Indicator",
                                        "Relative Real\nInterest Rate")) +
         theme(legend.title = element_blank()) +
-        scale_linetype(guide = "none")
+        scale_linetype(guide = "none") #+
+        # ggthemes::theme_economist()
 
     return(plot)
 }
