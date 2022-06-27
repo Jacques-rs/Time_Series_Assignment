@@ -197,7 +197,7 @@ plot_endog2(df = full_df)
 ```
 
 ```{r}
-plot_endog2_joint(df = full_df)
+plot_endog_joint(df = full_df)
 ```
 
 
@@ -243,6 +243,11 @@ To test this hypothesis, the Augmented Dickey Fuller test is employed. The
 p-value for each of the differenced time series is less than 0.05 and thus
 the null hypothesis is rejected, and we can conclude that these series are all
 stationary after one difference
+
+```{r}
+plot_endog2_log(full_df)
+```
+
 
 The Augmented Dicky-Fuller tests for the differenced time series values of all 
 the variables in the system, as well as the first difference of each of these 
@@ -332,12 +337,12 @@ options(scipen=999)
 var_aic <- VAR(endog_df[,c(2:8)], type = "const", lag.max = 8, 
                ic = "AIC", season = 4)
 
-VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
+VARselect(endog_df[,c(2:8)], type = "const", lag.max =8, season = 4)$selection
 
 var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
-                                             exogen = exog_df[,"Outliers"], 
+                                             exogen = exog_df[,5:8], 
                                              lag.max = 8, ic = "AIC")
-
+summary(var_aic2)
 # var_aic3 <- endog_df %>% dplyr::select(2:7 | 9) %>% VAR(., type = "const", season = 4, 
 #                                              exogen = exog_df[,"Outliers"], 
 #                                              lag.max = 8, ic = "AIC")
@@ -370,27 +375,38 @@ options(scipen=0)
 stargazer(var_aic$varresult, font.size = "tiny")
 ```
 
-```{r}
+_Tests to perform:_
+_1. Structural break_
+_2. White noise residuals_
+_3. autocorr resid's_
+_4. time-varying params_
+_5. heteroskedasticity_
+
+
+# Tests on VAR
+
+## Check for the presence of Structural Break
+
+```{r Testing for Structural Break}
 
 ```
 
+# Determining the order of CI
 
 ```{r}
 
 vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", spec = "transitory",
              K = 2, season = 4)
 
-summary(vec)
+vec2 <- full_df %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
+                                             ecdet = "const", 
+                                             spec = "transitory", K = 2, 
+                                             season = 4, 
+                                             dumvar = exog_df[,"Outliers"])
+
+summary(vec2$)
 ```
 
-
-```{r}
-
-vec2 <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", #spec = "transitory",
-             K = 4, season = 4)
-
-summary(vec2)
-```
 
 <!-- ```{r results='asis', message=F, comment='%', tidy=T} -->
 
@@ -398,52 +414,61 @@ summary(vec2)
 
 <!-- ``` -->
 
-
-```{r}
-
-
-mod1 <- tsDyn::VECM(full_df[,2:8], lag = 4, estim = "ML", include = "const",
-                    r=1, exogen = exog_df$season_dum)
-
-summ <- mod1$model
-```
-
-
+# Estimating VECM
 
 
 ```{r}
-# 
-# 
-# 
-# mod <- VECM(data = endog_df[,2:8], lag = 4, r = 1,
-#            include = "const", estim = "ML", exogen = exog_df[,2:4])
-# 
-# mod_summ <- summary(mod)
+mod1 <- full_df %>% dplyr::select(2:8) %>% 
+    tsDyn::VECM(., lag = 4, estim = "ML",
+                include = "const", r=1, 
+                exogen = exog_df[,c("SDUMC1", "SDUMC2", "SDUMC3")])
+summary(mod1)
+# mod2 <- full_df %>% dplyr::select(2:8) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod2)
 
+# mod3 <- full_df %>% dplyr::select(2:7 | 9) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod3)
 
-# mod <- dynlm(full_df$LREERS ~ full_df$RIRR + full_df$LRGDPPCR + full_df$OPENY
-#            + full_df$FBYA + full_df$NFAOFPY + full_df$LPR2COMM5
-#            + full_df$DUMNFAOFPY + full_df$DUMRER1
-#            + full_df$DUMRER2 + full_df$DUMFBYA + full_df$SDUMC1
-#            + full_df$SDUMC2 + full_df$SDUMC3,
-#            lag = 4,
-#            include = "const", estim = "ML", exog
-#            exogen = exog_df[,2:8])
+# mod4 <- full_df %>% dplyr::select(2:7 | 10) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod4)
+
+# mod5 <- full_df %>% dplyr::select(2:7 | 11) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod5)
+
+# mod6 <- full_df %>% dplyr::select(2:7 | 12) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod6)
+
+# mod7 <- full_df %>% dplyr::select(2:7 | 13) %>% 
+#     tsDyn::VECM(., lag = 4, estim = "ML",
+#                 include = "const", r=1, 
+#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+# summary(mod7)
+
 ```
 
-```{r results='asis', message=F, comment='%', tidy=T}
 
-stargazer(summ, header = FALSE)
+
+
+```{r}
 
 ```
 
 
-
-
-
-
-
-<!-- # Data and Methodology -->
 
 <!-- ## Plotting the Real Effective Exchange Rate -->
 
