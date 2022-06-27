@@ -10,10 +10,7 @@ split_data_endog <- function(df){
 
 split_data_exog <- function(df){
 
-    df2 <- df %>% dplyr::select(1 | 14:20) %>%
-        mutate(Outliers = DUMRER1 + DUMRER2 + DUMFBYA + DUMNFAOFPY,
-               .keep = "unused")
-
+    df2 <- df %>% dplyr::select(1 | 14:20)
 
     #%>%
         # gather(season, season_dum, 2:4) %>%
