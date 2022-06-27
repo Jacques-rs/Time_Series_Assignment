@@ -119,18 +119,41 @@ fmxdat::source_all("./code")
 # Introduction
 
 
-The aim of this paper is to replicate the work done by @mainpaper. They analyse
+The aim of this paper is to replicate the work by @mainpaper. They analyse
 the determinants of the Real Effective Exchange Rate (REER) based on a collection
-of variables as determinants. The purpose of their study was to find a set of 
+of variables as determinants, using a Vector Error Correction Model. The purpose
+of their study was to use the most current research to investigate a set of 
 variables with explanatory power in determining the long term behaviour of the 
-REER in South Africa over the period starting from the first quarter of the year
-1970 until the first quarter of the year 2002. Towards this end, they made use 
-of the Maximum Likelihood method of estimating the Vector Error Correction Model
-(VECM) from the paper by @johansenMLE.
+REER in South Africa. They used the period starting from the first quarter of 
+1970 until the first quarter of the year 2002. Towards this end, they made 
+use of the Maximum Likelihood method of estimating the VECM, developed in 
+@johansenMLE. Their choice of variables is based on the most recent research 
+at the time, of the determinants of the real exchange rate in developing 
+economies such as South Africa. This paper serves to replicate the steps taken
+by @mainpaper and reach a conclusion independently, and thus will critically
+evaluate the logical flow towards estimating the final model. Therefore, 
+additional tests and evaluations are made to reassess the robustness of the
+final mode.
+
+The choice of the model vector introduced later, is based on several 
+developments prior to 2004. Briefly, the variables have been found to serve as
+feasible explanatory variables for the REER includes: productivity, real 
+interest rates relative to mostly traded with, the relative openness of the 
+selected economy to trade, and the magnitude of the fiscal balance and net 
+foreign assets [@mainpaper].
+
+The Purchasing Power Parity (PPP) points to the equality between the price levels
+between two countries if they were quoted in the same currencies. When the PPP
+holds, the real exchange rate must not vary [@ppp]. The VECM for the REER is 
+thus an attempt to elucidate the nature of deviations from the PPP. A 
+comprehensive and accurate model for the deviations from the PPP that is 
+explainable by real factors  would provide an appropriate framework for 
+policy-makers to respond with ideal policy [@ppp]. In light of this, @mainpaper
+attempt to bring various explanatory variables together in a broad model that
+can appropriately explain these deviations.
 
 * What did I do?
-This paper is a replication and critical evaluation of the research paper by 
-@mainpaper.
+
 
 * why did I do this?
 
@@ -159,52 +182,60 @@ This paper is a replication and critical evaluation of the research paper by
 # Importing and Cleaning the Data
 
 
-```{r}
+```{r, include=F}
 full_df <- fetch_full() %>% full_clean()
-full_df
 ```
 
 
 ## Variable Names (SECTION TO BE DELETED)
 
-```{r}
+```{r include=F}
 as_tibble(names(full_df))
 ```
 
 
+# Plotting the Model Variables (STEP 0.)
 
 
+Figures \ref{reers} \& \ref{detreers} showcases each variable as they as they 
+were before their natural logarithm transformation.
 
 
-# Plotting the Variables of Interest (STEP 0.)
-
-
-All variables appear as they were before their natural logarithm was determined.
-
-## Plotting the Variables:
-
-
-```{r fig.cap="The South Africa Real Exchange Rate"}
+```{r fig.cap="The South Africa Real Exchange Rate \\label{reers}"}
 # p1 <- plot_endog1(full_df)
 # p2 <- plot_endog2(df = full_df)
 plot_endog1(full_df)
 # grid.arrange(p1, p2, nrow=2)
 ```
 
+The red lines indicate the dates at which dummy variables for possible outliers
+will be included as an alternative specification.
 
-```{r fig.width=7, fig.cap="Determinants of the Real Exchange Rate for South Africa"}
+```{r fig.width=7, fig.cap="Determinants of the Real Exchange Rate for South Africa \\label{detreers}"}
 plot_endog2(df = full_df)
 ```
 
-```{r}
+Figure \ref{detreers} above suggests that there is a possible structural break
+in the time series around the year 1985. This is mostly evident in the behaviour
+of the variable `NFAOFPY`, the Net Foreign Assets proxy. The openness indicator,
+Relative Real Interest Rate, Relative Real GDP, and Real Commodity prices 
+slightly correspond to this theory as well. A test for this is therefore 
+necessary.
+
+To illustrate the co-movement of the system, figure \ref{join} below plots them 
+jointly. Note that the Openness Indicator has also been logged to make the 
+visual comparison easier.
+
+```{r fig.cap="The Joint plot of the Model Varibales (Logged where necessary) \\label{joint}"}
 plot_endog_joint(df = full_df)
 ```
 
 
-_explain the plots above_
+A relative degree of co-movement is noticeable in each of these time series 
+altogether. The Log of Real GDP, however, requires one to take into account the
+declining trend, after which the co-movement seems more evident.
 
-
-# The Johansen Method
+# The Johansen Method in Theory
 
 _explain johansen method_
 
@@ -220,40 +251,35 @@ checking this models adequacy
 5. etc.
 
 
-## Plotting the Diffirenced Variables (STEP 1.)
+# 0. Plotting the Diffirenced Variables (STEP 1.)
 
 
-```{r fig.cap="The First Difference of the Real Exchange Rate Time Series \\label{REERdiff}"}
+```{r echo=FALSE, fig.cap="The First Difference of the LREERS \\label{reerdiff}"}
 diff_df <- full_df %>% mutate(across(names(.)[2:13], function(x) x-lag(x))) %>%
     filter(date > first(date))
-plot_endog1(diff_df)
+plot_endog1_log(diff_df)
 ```
 
 
 
 ```{r fig.cap="The First Difference of the Determinants of the Real Exchange Rate \\label{DETdiff}"}
-plot_endog2(df = diff_df)
+plot_endog2_log(df = diff_df)
 ```
 
-figures \ref{DETdiff} and \ref{REERdiff} above suggests that the REER time series is 
-most likely integrated of the first order (i.e. $REER \sim I(1)$), and includes 
-a constant term.
+figures \ref{DETdiff} and \ref{reerdiff} above suggest that the REER time series
+and its candidate explanatory variables are possibly integrated of the first 
+order (i.e. $REER \sim I(1)$), and includes a constant term.
 
 To test this hypothesis, the Augmented Dickey Fuller test is employed. The 
 p-value for each of the differenced time series is less than 0.05 and thus
 the null hypothesis is rejected, and we can conclude that these series are all
 stationary after one difference
 
-```{r}
-plot_endog2_log(full_df)
-```
-
-
 The Augmented Dicky-Fuller tests for the differenced time series values of all 
 the variables in the system, as well as the first difference of each of these 
 series are displayed in figures \ref{adf_joint} and \ref{adf_joint_diff} below.
 
-```{r fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
+```{r echo=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
 # Better format this later
 joint_adf_test <- joint_adf(full_df)
 # knitr::kable(joint_adf_test)
@@ -264,13 +290,11 @@ joint_adf_test
 The Augmented Dicky-Fuller tests for the differenced time series values of all 
 the variables in the system are displayed in figure \ref{adf_diff} below.
 
-```{r fig.cap="The Augmented Dicky-Fuller Test \\label{adf_diff_joint}"}
-
+```{r echo=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_diff_joint}"}
 # Better format this later
 joint_adf_test <- joint_adf_diff(full_df)
 # knitr::kable(joint_adf_test)
 joint_adf_test
-
 ```
 
 Figures \ref{adf_joint} and \ref{adf_joint_diff} therefore confirm that none of
@@ -281,13 +305,7 @@ openness indicator. This might be due to the irregular behaviour created by
 the apartheid era sanctions [@mainpaper]. 
 
 
-```{r}
-
-```
-
-
-
-## VECM Model Estimation:
+## VECM Model Estimation in Theory:
 
 *paper table 1 col's:*
 
@@ -312,10 +330,6 @@ _4. Choose lag specification that minimises an Information criterion_
 
 
 
-### Determine the Lag Order
-
-First we split the data into the additional dummies and the main variables:
-
 ```{r include=FALSE}
 endog_df <- split_data_endog(full_df)
 exog_df <- split_data_exog(full_df)
@@ -323,13 +337,7 @@ endog_df; exog_df
 ```
 
 
-# Estimating the Unrestricted VAR in Levels and Checking Adequacy
-
-
-<!-- ```{r} -->
-
-<!-- ``` -->
-
+# 1. Estimating the Unrestricted VAR in Levels and Checking Adequacy
 
 
 ```{r}
@@ -344,23 +352,23 @@ var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 
                                              lag.max = 8, ic = "AIC")
 summary(var_aic2)
 # var_aic3 <- endog_df %>% dplyr::select(2:7 | 9) %>% VAR(., type = "const", season = 4, 
-#                                              exogen = exog_df[,"Outliers"], 
+#                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 # 
 # var_aic4 <- endog_df %>% dplyr::select(2:7 | 10) %>% VAR(., type = "const", season = 4, 
-#                                              exogen = exog_df[,"Outliers"], 
+#                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 # 
 # var_aic5 <- endog_df %>% dplyr::select(2:7 | 11) %>% VAR(., type = "const", season = 4, 
-#                                              exogen = exog_df[,"Outliers"], 
+#                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 # 
 # var_aic6 <- endog_df %>% dplyr::select(2:7 | 12) %>% VAR(., type = "const", season = 4, 
-#                                              exogen = exog_df[,"Outliers"], 
+#                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 # 
 # var_aic7 <- endog_df %>% dplyr::select(2:7 | 13) %>% VAR(., type = "const", season = 4, 
-#                                              exogen = exog_df[,"Outliers"], 
+#                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 
 # var_aic$p; var_aic2$p; var_aic3$p; var_aic4$p; var_aic5$p; var_aic6$p; var_aic7$p
@@ -402,9 +410,9 @@ vec2 <- full_df %>% dplyr::select(2:8) %>% ca.jo(., type = "trace",
                                              ecdet = "const", 
                                              spec = "transitory", K = 2, 
                                              season = 4, 
-                                             dumvar = exog_df[,"Outliers"])
+                                             dumvar = exog_df[,5:8])
 
-summary(vec2$)
+summary(vec2)
 ```
 
 
@@ -421,42 +429,42 @@ summary(vec2$)
 mod1 <- full_df %>% dplyr::select(2:8) %>% 
     tsDyn::VECM(., lag = 4, estim = "ML",
                 include = "const", r=1, 
-                exogen = exog_df[,c("SDUMC1", "SDUMC2", "SDUMC3")])
+                exogen = exog_df[,2:4])
 summary(mod1)
 # mod2 <- full_df %>% dplyr::select(2:8) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod2)
 
 # mod3 <- full_df %>% dplyr::select(2:7 | 9) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod3)
 
 # mod4 <- full_df %>% dplyr::select(2:7 | 10) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod4)
 
 # mod5 <- full_df %>% dplyr::select(2:7 | 11) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod5)
 
 # mod6 <- full_df %>% dplyr::select(2:7 | 12) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod6)
 
 # mod7 <- full_df %>% dplyr::select(2:7 | 13) %>% 
 #     tsDyn::VECM(., lag = 4, estim = "ML",
 #                 include = "const", r=1, 
-#                 exogen = exog_df[,c("Outliers", "SDUMC1", "SDUMC2", "SDUMC3")])
+#                 exogen = exog_df[,2:8])
 # summary(mod7)
 
 ```
@@ -467,23 +475,6 @@ summary(mod1)
 ```{r}
 
 ```
-
-
-
-<!-- ## Plotting the Real Effective Exchange Rate -->
-
-
-<!-- ```{r} -->
-<!-- lreer_plot <- full_df %>% dplyr::select(date, LREERS) %>%  -->
-<!--     ggplot() + -->
-<!--     geom_line(aes(x = date, y = exp(LREERS)), col = "steelblue") + -->
-<!--     labs(title = "South African Real Effective Exchange Rate") + -->
-<!--     scale_y_continuous("Real Effective Exchange Rate") + -->
-<!--     scale_x_date("Date") -->
-
-<!-- lreer_plot -->
-<!-- ``` -->
-
 
 
 # Directly from [@mainpaper]
@@ -546,11 +537,14 @@ summary(mod1)
 <!-- # RIRR -->
 <!-- ``` -->
 
+\newpage
+
 # References
 
 
 <div id="refs"></div>
 
+\newpage
 
 # Appendix {-} 
 
