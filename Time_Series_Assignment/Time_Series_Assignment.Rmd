@@ -104,8 +104,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.pos = 'H', purl = TRUE)
 library(pacman)
 
-pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, 
-               tsDym, urca, tseries, vars)
+pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, bookdown,
+               tsDym, urca, tseries, vars, gridExtra, varEst, strucchange)
 fmxdat::source_all("./code")
 ```
 
@@ -148,30 +148,19 @@ This paper is a replication and critical evaluation of the research paper by
 
 
 ## Critical Evaluation
+
 * Robustness checks/extensions
 
 
-# Replication
+# Replication {-}
 
 
 
 # Importing and Cleaning the Data
 
 
-## Importing the full dataset:
-
-
 ```{r}
-full_df <- fetch_full()
-full_df
-```
-
-
-## Wrangling the dataset
-
-
-```{r}
-full_df <- full_clean(full_df)
+full_df <- fetch_full() %>% full_clean()
 full_df
 ```
 
@@ -187,29 +176,37 @@ as_tibble(names(full_df))
 
 
 
-## Plotting the Variables of Interest
+# Plotting the Variables of Interest (STEP 0.)
 
 
 All variables appear as they were before their natural logarithm was determined.
 
-### Plotting the Real Effective Exchange Rate:
+## Plotting the Variables:
 
+
+```{r fig.cap="The South Africa Real Exchange Rate"}
+# p1 <- plot_endog1(full_df)
+# p2 <- plot_endog2(df = full_df)
+plot_endog1(full_df)
+# grid.arrange(p1, p2, nrow=2)
+```
+
+
+```{r fig.width=7, fig.cap="Determinants of the Real Exchange Rate for South Africa"}
+plot_endog2(df = full_df)
+```
 
 ```{r}
-plot_endog1(full_df)
+plot_endog2_joint(df = full_df)
 ```
 
 
+_explain the plots above_
 
-### Plotting the Determinants of the Real Effective Exchange Rate:
 
+# The Johansen Method
 
-```{r fig.width=7}
-
-plot_endog2(df = full_df)
-
-```
-
+_explain johansen method_
 
 The @johansenMLE method requires six steps in the estimation process, which 
 follows as:
@@ -222,37 +219,68 @@ checking this models adequacy
 4. Estimating the VECM form and determining the cointegration rank (i.e. 'r')
 5. etc.
 
-### Plotting the Diffirenced Variables
+
+## Plotting the Diffirenced Variables (STEP 1.)
 
 
-```{r fig.cap="The First Difference of the Real Exchange Rate Time Series"}
-
-test_df <- full_df %>% mutate(across(names(.)[2:13], function(x) x-lag(x))) %>% filter(date > first(date))
-plot_endog1(test_df)
-
+```{r fig.cap="The First Difference of the Real Exchange Rate Time Series \\label{REERdiff}"}
+diff_df <- full_df %>% mutate(across(names(.)[2:13], function(x) x-lag(x))) %>%
+    filter(date > first(date))
+plot_endog1(diff_df)
 ```
 
 
 
-```{r}
-plot_endog2(df = test_df)
+```{r fig.cap="The First Difference of the Determinants of the Real Exchange Rate \\label{DETdiff}"}
+plot_endog2(df = diff_df)
 ```
 
-The figure above suggest that the REER time series is most likely integrated of 
-order 1 (i.e. $REER \sim I(1)$), and includes a constant term.
+figures \ref{DETdiff} and \ref{REERdiff} above suggests that the REER time series is 
+most likely integrated of the first order (i.e. $REER \sim I(1)$), and includes 
+a constant term.
 
 To test this hypothesis, the Augmented Dickey Fuller test is employed. The 
-p-value for each opf the differenced time series is less than 0.05 and thus
+p-value for each of the differenced time series is less than 0.05 and thus
 the null hypothesis is rejected, and we can conclude that these series are all
 stationary after one difference
 
-```{r}
+The Augmented Dicky-Fuller tests for the differenced time series values of all 
+the variables in the system, as well as the first difference of each of these 
+series are displayed in figures \ref{adf_joint} and \ref{adf_joint_diff} below.
 
+```{r fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
 # Better format this later
 joint_adf_test <- joint_adf(full_df)
-knitr::kable(joint_adf_test)
+# knitr::kable(joint_adf_test)
+joint_adf_test
+```
+
+
+The Augmented Dicky-Fuller tests for the differenced time series values of all 
+the variables in the system are displayed in figure \ref{adf_diff} below.
+
+```{r fig.cap="The Augmented Dicky-Fuller Test \\label{adf_diff_joint}"}
+
+# Better format this later
+joint_adf_test <- joint_adf_diff(full_df)
+# knitr::kable(joint_adf_test)
+joint_adf_test
 
 ```
+
+Figures \ref{adf_joint} and \ref{adf_joint_diff} therefore confirm that none of
+the variables are stationary, and that all but `NFAOFPY` i.e. the net foreign 
+assets are stationary after the first difference. For those that are stationary,
+the null hypothesis was rejected at the 1% significance level, barring the 
+openness indicator. This might be due to the irregular behaviour created by 
+the apartheid era sanctions [@mainpaper]. 
+
+
+```{r}
+
+```
+
+
 
 ## VECM Model Estimation:
 
@@ -290,19 +318,67 @@ endog_df; exog_df
 ```
 
 
-```{r}
+# Estimating the Unrestricted VAR in Levels and Checking Adequacy
 
+
+<!-- ```{r} -->
+
+<!-- ``` -->
+
+
+
+```{r}
+options(scipen=999)
 var_aic <- VAR(endog_df[,c(2:8)], type = "const", lag.max = 8, 
                ic = "AIC", season = 4)
-var_aic$p
-    
+
+VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
+
+var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
+                                             exogen = exog_df[,"Outliers"], 
+                                             lag.max = 8, ic = "AIC")
+
+# var_aic3 <- endog_df %>% dplyr::select(2:7 | 9) %>% VAR(., type = "const", season = 4, 
+#                                              exogen = exog_df[,"Outliers"], 
+#                                              lag.max = 8, ic = "AIC")
+# 
+# var_aic4 <- endog_df %>% dplyr::select(2:7 | 10) %>% VAR(., type = "const", season = 4, 
+#                                              exogen = exog_df[,"Outliers"], 
+#                                              lag.max = 8, ic = "AIC")
+# 
+# var_aic5 <- endog_df %>% dplyr::select(2:7 | 11) %>% VAR(., type = "const", season = 4, 
+#                                              exogen = exog_df[,"Outliers"], 
+#                                              lag.max = 8, ic = "AIC")
+# 
+# var_aic6 <- endog_df %>% dplyr::select(2:7 | 12) %>% VAR(., type = "const", season = 4, 
+#                                              exogen = exog_df[,"Outliers"], 
+#                                              lag.max = 8, ic = "AIC")
+# 
+# var_aic7 <- endog_df %>% dplyr::select(2:7 | 13) %>% VAR(., type = "const", season = 4, 
+#                                              exogen = exog_df[,"Outliers"], 
+#                                              lag.max = 8, ic = "AIC")
+
+# var_aic$p; var_aic2$p; var_aic3$p; var_aic4$p; var_aic5$p; var_aic6$p; var_aic7$p
+ var_aic$p; var_aic2$p
+# normality.test(var_aic)
+
+options(scipen=0)
+```
+
+
+```{r results='asis', message=F, comment='%', tidy=T}
+stargazer(var_aic$varresult, font.size = "tiny")
+```
+
+```{r}
+
 ```
 
 
 ```{r}
 
 vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", spec = "transitory",
-             K = 4, season = 4)
+             K = 2, season = 4)
 
 summary(vec)
 ```
@@ -445,4 +521,11 @@ stargazer(summ, header = FALSE)
 <!-- # RIRR -->
 <!-- ``` -->
 
+# References
+
+
+<div id="refs"></div>
+
+
+# Appendix {-} 
 
