@@ -28,8 +28,8 @@ plot_endog2 <- function(df){
         filter(!Econ_Measure %in% c("LREERS", "LPR2GOLD", "LPR2COMM3",
                                    "LPRCOMM3", "LPRCOMM5", "LPRGOLD")) %>%
         ggplot() +
-        geom_line(aes(x = date, y = Value, linetype = Econ_Measure,
-                      color = Econ_Measure)) +
+        geom_line(aes(x = date, y = Value, color = Econ_Measure,
+                      linetype = Econ_Measure)) +
         facet_wrap(~Econ_Measure, scales = "free_y", ncol = 2) +
         scale_color_hue(labels = c("Fiscal Balance",
                                        "Real Commodity\nPrices",
@@ -37,8 +37,14 @@ plot_endog2 <- function(df){
                                        "Net Foreign\nAssets",
                                        "Openness Indicator",
                                        "Relative Real\nInterest Rate")) +
-        theme(legend.title = element_blank()) +
-        scale_linetype(guide = "none") #+
+        scale_linetype_discrete(labels = c("Fiscal Balance",
+                                           "Real Commodity\nPrices",
+                                           "Relative Real\nGDP per Capita",
+                                           "Net Foreign\nAssets",
+                                           "Openness Indicator",
+                                           "Relative Real\nInterest Rate")) +
+        guides(linetype=guide_legend(title=NULL),
+               color=guide_legend(title=NULL))
         # ggthemes::theme_economist()
 
     return(plot)
@@ -58,18 +64,25 @@ plot_endog_joint <- function(df){
         filter(!Econ_Measure %in% c("LPR2GOLD", "LPR2COMM3",
                                     "LPRCOMM3", "LPRCOMM5", "LPRGOLD")) %>%
         ggplot() +
-        geom_line(aes(x = date, y = Value, linetype = Econ_Measure,
-                      color = Econ_Measure)) +
-        facet_wrap(~Econ_Measure, scales = "free", ncol = 2) +
+        geom_line(aes(x = date, y = Value, color = Econ_Measure,
+                      linetype = Econ_Measure)) +
+        facet_wrap(~Econ_Measure, scales = "free_y", ncol = 2) +
         scale_color_hue(labels = c("Fiscal Balance",
                                    "Real Commodity\nPrices",
                                    "REER",
                                    "Relative Real\nGDP per Capita",
-                                   "Net Foreign Assets\nincluding the\nForward Book",
+                                   "Net Foreign\nAssets",
                                    "Openness Indicator",
                                    "Relative Real\nInterest Rate")) +
-        theme(legend.title = element_blank()) +
-        scale_linetype(guide = "none") #+
+        scale_linetype_discrete(labels = c("Fiscal Balance",
+                                           "Real Commodity\nPrices",
+                                           "REER",
+                                           "Relative Real\nGDP per Capita",
+                                           "Net Foreign\nAssets",
+                                           "Openness Indicator",
+                                           "Relative Real\nInterest Rate")) +
+        guides(linetype=guide_legend(title=NULL),
+               color=guide_legend(title=NULL))
     # ggthemes::theme_economist()
 
     return(plot)
@@ -101,17 +114,23 @@ plot_endog2_log <- function(df){
         filter(!Econ_Measure %in% c("LREERS", "LPR2GOLD", "LPR2COMM3",
                                     "LPRCOMM3", "LPRCOMM5", "LPRGOLD")) %>%
         ggplot() +
-        geom_line(aes(x = date, y = Value, linetype = Econ_Measure,
-                      color = Econ_Measure)) +
+        geom_line(aes(x = date, y = Value, color = Econ_Measure,
+                      linetype = Econ_Measure)) +
         facet_wrap(~Econ_Measure, scales = "free_y", ncol = 2) +
         scale_color_hue(labels = c("Fiscal Balance",
                                    "Real Commodity\nPrices",
                                    "Relative Real\nGDP per Capita",
-                                   "Net Foreign Assets\nincluding the\nForward Book",
+                                   "Net Foreign\nAssets",
                                    "Openness Indicator",
                                    "Relative Real\nInterest Rate")) +
-        theme(legend.title = element_blank()) +
-        scale_linetype(guide = "none") #+
+        scale_linetype_discrete(labels = c("Fiscal Balance",
+                                   "Real Commodity\nPrices",
+                                   "Relative Real\nGDP per Capita",
+                                   "Net Foreign\nAssets",
+                                   "Openness Indicator",
+                                   "Relative Real\nInterest Rate")) +
+        guides(linetype=guide_legend(title=NULL),
+               color=guide_legend(title=NULL))
     # ggthemes::theme_economist()
 
     return(plot)
