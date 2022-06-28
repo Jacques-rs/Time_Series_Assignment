@@ -105,7 +105,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 library(pacman)
 
 pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, bookdown,
-               tsDym, urca, tseries, vars, gridExtra, varEst, strucchange)
+               tsDym, urca, tseries, vars, gridExtra, varEst, strucchange, 
+               forecast, tidystats) 
 fmxdat::source_all("./code")
 ```
 
@@ -115,6 +116,8 @@ fmxdat::source_all("./code")
 <!-- ############################## -->
 
 \newpage
+
+# Part I
 
 # Introduction
 
@@ -152,30 +155,10 @@ policy-makers to respond with ideal policy [@ppp]. In light of this, @mainpaper
 attempt to bring various explanatory variables together in a broad model that
 can appropriately explain these deviations.
 
-* What did I do?
 
 
-* why did I do this?
 
-
-# Literature Review
-
-
-## What did the Authors do?
-
-
-## Motivation
-* Importance
-* Methods
-* Novel Contribution(s)
-
-
-## Critical Evaluation
-
-* Robustness checks/extensions
-
-
-# Replication {-}
+# Part II: Replication {-}
 
 
 
@@ -187,53 +170,63 @@ full_df <- fetch_full() %>% full_clean()
 ```
 
 
-## Variable Names (SECTION TO BE DELETED)
-
-```{r include=F}
-as_tibble(names(full_df))
-```
-
-
 # Plotting the Model Variables (STEP 0.)
 
 
-Figures \ref{reers} \& \ref{detreers} showcases each variable as they as they 
+Figures \ref{reers} \& \ref{detreers} displays each variable as they as they 
 were before their natural logarithm transformation.
 
-
-```{r fig.cap="The South Africa Real Exchange Rate \\label{reers}"}
+```{r echo=FALSE, fig.cap="The South Africa Real Exchange Rate \\label{reers}"}
 # p1 <- plot_endog1(full_df)
 # p2 <- plot_endog2(df = full_df)
 plot_endog1(full_df)
 # grid.arrange(p1, p2, nrow=2)
 ```
 
-The red lines indicate the dates at which dummy variables for possible outliers
-will be included as an alternative specification.
+_might have to rethink this: The regime changes might be accounted for/proxied_
+_by including the openness, real commodity prices and net foreign assets??_
 
-```{r fig.width=7, fig.cap="Determinants of the Real Exchange Rate for South Africa \\label{detreers}"}
+The red lines indicate the dates at which dummy variables for possible outliers
+will be included as an alternative model specification. This alternative 
+specification aims to account for the large changes in the real exchange rate
+regime over the period. There was little consistency in the manner in which
+the real exchange rate was determined over the period from 1970 to 2002. Most
+significantly, intermittent changes in the degree and nature of intervention
+from the South African Reserve Bank (SARB) suggests that the explanatory factors
+determining the REER will necessary be inconsistent over this period [@detreer].
+The period from 1979 to 1988 from figure \ref{reers} for example, is visually 
+unique from the rest of the time series. The coincidence seems unlikely with
+some research suggesting that intervention during this period was based on
+maintaining the real price of gold in rand [@detreer]. This suggests that a 
+model that can account for some structural deviations might be more appropriate.
+The VECM developed by @mainpaper to explain the equilibrium deviations of the 
+REER might achieve more preciseness by accounting for these periods of deviation
+from free market behaviour.
+
+```{r echo=FALSE, fig.cap="Determinants of the Real Exchange Rate for South Africa \\label{detreers}", fig.width=7}
 plot_endog2(df = full_df)
 ```
 
-Figure \ref{detreers} above suggests that there is a possible structural break
-in the time series around the year 1985. This is mostly evident in the behaviour
-of the variable `NFAOFPY`, the Net Foreign Assets proxy. The openness indicator,
-Relative Real Interest Rate, Relative Real GDP, and Real Commodity prices 
-slightly correspond to this theory as well. A test for this is therefore 
-necessary.
+Figure \ref{detreers} above might also suggest that there is a possible 
+structural break in the time series around the year 1985. This is mostly evident
+in the behaviour of the variable `NFAOFPY`, the Net Foreign Assets proxy. The 
+openness indicator, Relative Real Interest Rate, Relative Real GDP, and Real 
+Commodity prices slightly correspond to this theory as well. A test for this is 
+therefore necessary.
 
 To illustrate the co-movement of the system, figure \ref{join} below plots them 
 jointly. Note that the Openness Indicator has also been logged to make the 
 visual comparison easier.
 
-```{r fig.cap="The Joint plot of the Model Varibales (Logged where necessary) \\label{joint}"}
+```{r echo=FALSE, fig.cap="The Joint plot of the Model Varibales (Logged where necessary) \\label{joint}"}
 plot_endog_joint(df = full_df)
 ```
 
 
 A relative degree of co-movement is noticeable in each of these time series 
 altogether. The Log of Real GDP, however, requires one to take into account the
-declining trend, after which the co-movement seems more evident.
+declining trend, after which the co-movement seems more evident. Also worth 
+noting, is that none of these series seem to be stationary.
 
 # The Johansen Method in Theory
 
@@ -262,30 +255,23 @@ plot_endog1_log(diff_df)
 
 
 
-```{r fig.cap="The First Difference of the Determinants of the Real Exchange Rate \\label{DETdiff}"}
+```{r echo=FALSE, fig.cap="The First Difference of the Determinants of the Real Exchange Rate \\label{DETdiff}"}
 plot_endog2_log(df = diff_df)
 ```
 
 figures \ref{DETdiff} and \ref{reerdiff} above suggest that the REER time series
 and its candidate explanatory variables are possibly integrated of the first 
-order (i.e. $REER \sim I(1)$), and includes a constant term.
-
-To test this hypothesis, the Augmented Dickey Fuller test is employed. The 
-p-value for each of the differenced time series is less than 0.05 and thus
-the null hypothesis is rejected, and we can conclude that these series are all
-stationary after one difference
-
-The Augmented Dicky-Fuller tests for the differenced time series values of all 
-the variables in the system, as well as the first difference of each of these 
-series are displayed in figures \ref{adf_joint} and \ref{adf_joint_diff} below.
+order (i.e. $REER \sim I(1)$). The deterministic component is most likely a 
+constant term. Each of these variables seem somewhat stationary after their 
+first difference is been determined.
 
 ```{r echo=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
+# adf_temp <- urca::ur.df(full_df[,"LRGDPPCR"], type = "trend", lags = 8, selectlags = "BIC")
 # Better format this later
 joint_adf_test <- joint_adf(full_df)
 # knitr::kable(joint_adf_test)
 joint_adf_test
 ```
-
 
 The Augmented Dicky-Fuller tests for the differenced time series values of all 
 the variables in the system are displayed in figure \ref{adf_diff} below.
@@ -297,12 +283,17 @@ joint_adf_test <- joint_adf_diff(full_df)
 joint_adf_test
 ```
 
-Figures \ref{adf_joint} and \ref{adf_joint_diff} therefore confirm that none of
-the variables are stationary, and that all but `NFAOFPY` i.e. the net foreign 
-assets are stationary after the first difference. For those that are stationary,
-the null hypothesis was rejected at the 1% significance level, barring the 
-openness indicator. This might be due to the irregular behaviour created by 
-the apartheid era sanctions [@mainpaper]. 
+To test this hypothesis, that each of these series are only stationary after the
+first difference, the Augmented Dickey Fuller test is employed. The Augmented 
+Dicky-Fuller tests for the differenced time series values of all 
+the variables in the system, as well as the first difference of each of these 
+series are displayed in figures \ref{adf_joint} and \ref{adf_joint_diff} above.
+The figures confirm that none of the variables are stationary, and that all but `
+NFAOFPY` i.e. the net foreign assets are stationary after the first difference. 
+For those that are stationary, the null hypothesis was rejected at the 1% 
+significance level, barring the openness indicator for which the p-value is less
+than 0.05. This might be due to the large deviations created by the apartheid 
+era sanctions [@mainpaper]. 
 
 
 ## VECM Model Estimation in Theory:
@@ -337,7 +328,7 @@ endog_df; exog_df
 ```
 
 
-# 1. Estimating the Unrestricted VAR in Levels and Checking Adequacy
+# 1.A: Estimating the Unrestricted VAR in Levels and Checking Adequacy
 
 
 ```{r}
@@ -345,12 +336,13 @@ options(scipen=999)
 var_aic <- VAR(endog_df[,c(2:8)], type = "const", lag.max = 8, 
                ic = "AIC", season = 4)
 
-VARselect(endog_df[,c(2:8)], type = "const", lag.max =8, season = 4)$selection
+VARselect(endog_df[,c(2:8)], type = "const", lag.max = 4, season = 4)$selection
+VARselect(endog_df[,c(2:8)], type = "const", lag.max = 4, season = 4,
+          exogen = exog_df[,5:8])$selection
 
 var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
                                              exogen = exog_df[,5:8], 
                                              lag.max = 8, ic = "AIC")
-summary(var_aic2)
 # var_aic3 <- endog_df %>% dplyr::select(2:7 | 9) %>% VAR(., type = "const", season = 4, 
 #                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
@@ -372,7 +364,6 @@ summary(var_aic2)
 #                                              lag.max = 8, ic = "AIC")
 
 # var_aic$p; var_aic2$p; var_aic3$p; var_aic4$p; var_aic5$p; var_aic6$p; var_aic7$p
- var_aic$p; var_aic2$p
 # normality.test(var_aic)
 
 options(scipen=0)
@@ -380,7 +371,7 @@ options(scipen=0)
 
 
 ```{r results='asis', message=F, comment='%', tidy=T}
-stargazer(var_aic$varresult, font.size = "tiny")
+stargazer(var_aic2$varresult$LREERS, font.size = "tiny")
 ```
 
 _Tests to perform:_
@@ -391,13 +382,75 @@ _4. time-varying params_
 _5. heteroskedasticity_
 
 
-# Tests on VAR
+# 1.B: Tests on VAR
+
+## White Noise Residuals
+
+```{r echo=FALSE, fig.cap="VAR Residuals plot - Model 1\\label{resid1}"}
+as_tibble(resid(var_aic)) %>% gather(vary, res) %>% 
+    dplyr::summarise(index = rep(c(1:127), 7), vary, res) %>%
+    group_by(vary) %>% 
+    ggplot() +
+    geom_line(aes(x = index, y = res, color = vary, linetype = vary)) +
+    facet_wrap(~vary, ncol = 2, scales = "free_y") +
+    guides(color=FALSE, linetype=FALSE) +
+    scale_y_continuous("Residual value")
+    # element_text()
+```
+
+The plot of the residuals from the first VAR model in figure \ref{resid1} seems
+very close to a white noise process, however, there do appear to be deviations
+from the zero mean that could imply otherwise. The clusters of larger residuals
+appear to be concentrated around the timeline that corresponds with the outliers
+identified by @mainpaper. Alternatively, this could add an additional 
+illustration of the underlying effect of a structural change in the data.
+
+```{r include=FALSE}
+a1 <- checkresiduals(var_aic$varresult$LREERS, test = "LB", plot = F)
+a2 <- checkresiduals(var_aic$varresult$RIRR, test = "LB", plot = F)
+a3 <- checkresiduals(var_aic$varresult$LRGDPPCR, test = "LB", plot = F)
+a4 <- checkresiduals(var_aic$varresult$OPENY, test = "LB", plot = F)
+a5 <- checkresiduals(var_aic$varresult$FBYA, test = "LB", plot = F)
+a6 <- checkresiduals(var_aic$varresult$NFAOFPY, test = "LB", plot = F)
+a7 <- checkresiduals(var_aic$varresult$LPR2COMM5, test = "LB", plot = F)
+
+a1$data.name = "LREERS_Residual"
+a2$data.name = "RIRR_Residual"
+a3$data.name = "LRGDPPCR_Residual"
+a4$data.name = "OPENY_Residual"
+a5$data.name = "FBYA_Residual"
+a6$data.name = "NFAOFPY_Residual"
+a7$data.name = "LPR2COMM5_Residual"
+
+a1 <- unlist(a1)
+a2 <- unlist(a2)
+a3 <- unlist(a3)
+a4 <- unlist(a4)
+a5 <- unlist(a5)
+a6 <- unlist(a6)
+a7 <- unlist(a7)
+
+
+
+# a1 <- tidy_stats(a1)
+
+```
+
+```{r results='asis', message=F, comment='%', tidy=T}
+stargazer(a1, header = F)
+```
+
+
+_might still plot `acf` of residuals_
+
+
 
 ## Check for the presence of Structural Break
 
 ```{r Testing for Structural Break}
 
 ```
+
 
 # Determining the order of CI
 
@@ -548,3 +601,34 @@ summary(mod1)
 
 # Appendix {-} 
 
+# Introduction
+
+* What did I do?
+
+
+* why did I do this?
+
+
+# Literature Review
+
+
+## What did the Authors do?
+
+
+## Motivation
+* Importance
+* Methods
+* Novel Contribution(s)
+
+
+## Critical Evaluation
+
+* Robustness checks/extensions
+
+
+
+## Variable Names (SECTION TO BE DELETED)
+
+```{r include=F}
+as_tibble(names(full_df))
+```
