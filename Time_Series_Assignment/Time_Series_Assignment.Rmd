@@ -432,7 +432,7 @@ options(scipen=0)
 
 
 ```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
-stargazer(var_aic2$varresult$LREERS, 
+stargazer(#var_aic2$varresult$LREERS, 
           var_aic2_alt$varresult$LREERS,
           var_aic2_forced$varresult$LREERS,
           title = "VAR Estimation Results", 
@@ -519,9 +519,13 @@ es_test <- serial.test(var_aic, type = "ES")
 es_test2 <- serial.test(var_aic2, type = "ES")
 es_test_forced <- serial.test(var_aic2_forced, type = "ES")
 es_test2_forced <- serial.test(var_aic2_forced, type = "ES")
+es_test_alt <- serial.test(var_aic2_alt, type = "ES")
+es_test2_alt <- serial.test(var_aic2_alt, type = "ES")
 tests <- cbind(es_test$serial, es_test2$serial, 
               es_test_forced$serial,
-              es_test2_forced$serial)
+              es_test2_forced$serial,
+              es_test_alt$serial,
+              es_test2_alt$serial)
 unlist(es_test$serial)
 
 es_tests <- data.frame(matrix(unlist(tests), nrow=6, byrow=F),
@@ -531,7 +535,6 @@ es_tests <- data.frame(matrix(unlist(tests), nrow=6, byrow=F),
                                     "p_value",
                                     "Test",
                                     "Model"))
-names(es_tests)[1] = "x"
 es_tests <- es_tests %>% 
     # Sensitive to change!!!!!
     filter(c(rep(T, 5), F)) %>% 
@@ -542,21 +545,14 @@ names(es_tests)[1] = "VAR_Residuals_Auto"
 names(es_tests)[2] = "VAR_Residuals_Auto_Outliers"
 names(es_tests)[3] = "VAR_Residuals_Forced"
 names(es_tests)[4] = "VAR_Residuals_Forced_Outliers"
+names(es_tests)[5] = "VAR_Residuals_Alt"
+names(es_tests)[6] = "VAR_Residuals_Alt_Outliers"
+
 es_tests <- es_tests %>% 
     rownames_to_column() %>% 
     gather(Model, value, -rowname) %>% 
     spread(rowname, value)
 ```
-
-<!-- ```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T} -->
-<!-- stargazer(es_tests, header = F, font.size = "footnotesize", -->
-<!--           title = "Edgerton-Shukur F test for Serial Correlation", -->
-<!--           notes = c("Null-hypothesis: The Residuals Display No Serial Corrrelation", -->
-<!--                     "Adjusted for small sample bias"), -->
-<!--           summary = F) -->
-<!-- ``` -->
-
-
 
 ```{r include=FALSE}
 # null hypothesis of Portmanteau Test: No serial correlation
@@ -564,9 +560,15 @@ port_test <- serial.test(var_aic, type = "PT.adjusted")
 port_test2 <- serial.test(var_aic2, type = "PT.adjusted")
 port_test_forced <- serial.test(var_aic2_forced, type = "PT.adjusted")
 port_test2_forced <- serial.test(var_aic2_forced, type = "PT.adjusted")
+port_test_alt <- serial.test(var_aic, type = "PT.adjusted")
+port_test2_alt <- serial.test(var_aic2, type = "PT.adjusted")
+
 test <- cbind(port_test$serial, port_test2$serial, 
               port_test_forced$serial,
-              port_test2_forced$serial)
+              port_test2_forced$serial,
+              port_test_alt$serial,
+              port_test2_alt$serial)
+
 unlist(port_test$serial)
 
 pmt_test <- data.frame(matrix(unlist(test), nrow=5, byrow=F),
@@ -575,7 +577,7 @@ pmt_test <- data.frame(matrix(unlist(test), nrow=5, byrow=F),
                                     "p_value",
                                     "Test",
                                     "Model"))
-names(pmt_test)[1] = "x"
+
 pmt_test <- pmt_test %>% 
     # Sensitive to change!!!!!
     filter(c(rep(T, 4), F)) %>% 
@@ -586,6 +588,9 @@ names(pmt_test)[1] = "VAR_Residuals_Auto"
 names(pmt_test)[2] = "VAR_Residuals_Auto_Outliers"
 names(pmt_test)[3] = "VAR_Residuals_Forced"
 names(pmt_test)[4] = "VAR_Residuals_Forced_Outliers"
+names(pmt_test)[5] = "VAR_Residuals_Alt"
+names(pmt_test)[6] = "VAR_Residuals_Alt_Outliers"
+
 pmt_test["Test",] = "Portmanteau_(adj)"
 pmt_test <- pmt_test %>% 
     rownames_to_column() %>% 
@@ -601,35 +606,50 @@ stargazer(rbind(pmt_test, es_tests),
                     "Note: Both tests adjust for small sample bias"))
 ```
 
-As pointed out in section \ref{var_est}, the inclusion of additional lags up to 
-4, is most likely to solve the problem of serial correlation. From table 
+Null: No Serial corr
+$\therefore$ low p-val => reject Null => There exists serial corr
+
+Recall the hypothesis from section \ref{var_est}, the inclusion of additional 
+lags up to 
+4, is most likely towards solving the problem of serial correlation. From table 
 \ref{serial}, the Models with the suffix `Forced` or `Forced_Outliers` are the
-VAR models with four lags. The latter being those with added dummies for the 
-outlier observations. The table above displays the results from the 'Adjusted Portmanteau Test' and the @es_test F-test. Both of these tests incorporate for 
-small sample corrections that are necessary in the case of this dataset [@ts_an]. Both tests yield p-values greater than 0.05 for the model specified with four lags,
-and outlier dummies. The rejection is not as strong in the case of the @es_test F-test. 
+VAR models with four lags, the replication of the model from @mainpaper. 
+The latter includes the added dummies for the 
+outlier observations. The `Alt` models are those with `LOPENY`, i.e. the openness
+indicator has been scaled. The `Auto` models are those selected by automating 
+the VAR selection process based on the AIC. The `alt` model was also selected in
+this way. The meaning of `Outliers` remains consistent.
+Table \ref{serial} above displays the results from the 'Adjusted 
+Portmanteau Test' and the @es_test F-test. Both of these tests incorporate 
+small sample corrections that are necessary in the case of this dataset [@ts_an].
+The results seem relatively inconsistent in this case. The Portmanteau Test 
+results in p-values less than 0.05 for the `alt`, and `auto` specifications with 
+outliers. Therefore, the only models that are not rejected for having serial
+correlated errors is the alternative specification with outlier dummies, and 
+the model from the original paper with 2 lags instead of 4, and outlier dummies.
+There exists some concerns about whether this test is accurate for these types
+of models [@auto_tests \& @ts_an].
+The p-values from the @es_test F-test imply that only the `Auto` specification
+without outliers is a suboptimal specification with serial correlation. The 
+`Forced` specifications, however, have p-values equal to 0.0986 such that their
+serial correlation cannot be rejected at the 10% confidence level. This marginal 
+conclusion of uncorrelated residuals is concerning when the model is already not
+the ideal specification according to the SC and AIC. The `Alt` specification has
+a more confident rejection of serial correlation with p-values equal to 0.1761
+with and without dummies for outliers.
 
 ### ACF of Residuals Plot
 
-```{r echo=FALSE}
-# port_test <- serial.test(var_aic, lags.pt = 4)
-# port_test$resid %>%
-#     as.tibble() %>% 
-#     gather(Variable, Residual) %>% 
-#     summarise(Index = rep(1:127, times = 7), Variable, Residual) %>% 
-#     ggplot() +
-#     geom_line(aes(x = Index, y = Residual, color = Variable, linetype = Variable))+
-#     facet_wrap(~Variable, ncol = 3, scales = "free_y") +
-#     scale_linetype(element_blank()) +
-#     scale_color_hue(element_blank())
-
-ggAcf(port_test$resid) +
+```{r echo=FALSE, fig.cap="Plot of the ACF of the `Forced` Model with OutlierDummies\\label{resid_forced}"}
+ggAcf(port_test2_forced$resid) +
     theme(axis.text.y = element_blank(),
           axis.ticks.y = element_blank(),
           axis.text.x = element_text(size = 3))
-    
 ```
 
+Figure \ref{resid_forced} above visually illustrates the deviation
+from serial correlated errors. `LREERS`, the log of the REER, and the net
+foreign assets variable seems to display the largest deviations.
 
 ## II Check for the presence of Structural Break
 
@@ -640,145 +660,207 @@ ggAcf(port_test$resid) +
 
 # 3. Determining the order of CI
 
-```{r}
+```{r include=FALSE}
 
-jo <- endog_alt %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
-                                                 ecdet = "const", 
-                                                 spec = "longrun",
+jo_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    ca.jo(., type = "trace", 
+             ecdet = "const", 
+             spec = "transitory",
              K = 2, season = 4)
+jo2_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    ca.jo(., type = "trace", 
+             ecdet = "const", 
+             spec = "transitory", K = 2, 
+             season = 4, 
+             dumvar = exog_df[,5:8])
 
-jo2 <- endog_alt %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
-                                             ecdet = "const", 
-                                             spec = "longrun", K = 2, 
-                                             season = 4, 
-                                             dumvar = exog_df[,5:8])
 
-jo_forced <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", 
-                   spec = "longrun",
+jo2 <- endog_df %>% dplyr::select(2:8) %>% 
+    ca.jo(., type = "trace", 
+             ecdet = "const", 
+             spec = "transitory", K = 2, 
+             season = 4, 
+             dumvar = exog_df[,5:8])
+
+
+jo_forced <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(., type = "trace", ecdet = "const", 
+                   spec = "transitory",
                     K = 4, season = 4)
+jo2_forced <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(., type = "trace", 
+             ecdet = "const",
+             spec = "transitory",
+             K = 4, 
+             season = 4,
+             dumvar = exog_df[,5:8])
 
-jo2_forced <- full_df %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
-                                             # ecdet = "const", 
-                                             spec = "longrun",
-                                             K = 4, 
-                                             season = 4,
-                                             dumvar = exog_df[,5:8])
+summary(jo_alt)
+summary(jo2_alt)
+
 summary(jo_forced)
 summary(jo2_forced)
 
+summary(jo2)
+
+
+# Values of teststatistic and critical values of test (jo2_alt):
+# 
+
 
 ```
 
-
-```{r results='asis', message=F, comment='%', tidy=T}
-
-# stargazer(summ, header = FALSE, summary = F)
-
+```{r echo=FALSE, out.width='100%', fig.cap="Johansen Trace test on alternative model (no outlier dummy)\\label{jo_alt}"}
+knitr::include_graphics('./images/jo_alt.png')
 ```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Johansen Trace test on alternative model (with outlier dummy)\\label{jo2_alt}"}
+knitr::include_graphics('./images/jo2_alt.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Johansen Trace test on Forced model (no outlier dummy)\\label{jo_forced}"}
+knitr::include_graphics('./images/jo_forced.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Johansen Trace test on Forced model (with outlier dummy)\\label{jo2_forced}"}
+knitr::include_graphics('./images/jo2_forced.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Johansen Trace test on auto model (with outlier dummy)\\label{jo2}"}
+knitr::include_graphics('./images/jo2.png')
+```
+
+According to the above tables \ref{jo2}, \ref{jo2_alt}, \ref{jo_forced}, 
+\ref{jo2_forced}, and \ref{jo2} the results from the @johansenMLE test suggests,
+at the 5% significance, 3, 3, 1, 1, and 2, cointegration vectors existing
+for the Alternative without outliers, with outliers, the forced with, and without,
+and the automated model respectively. Therefore, the replication of the result
+from @mainpaper is unsuccessful, however, this should still be a reasonable 
+representation of their model. At the 1% significance, the cointegration relations
+were 2, 2, 0, 1, and 2, in the same order.
+
 
 # 4. Estimating VECM with Restriction
-
-```{r}
-
-```
-
-
-
 
 ```{r include=FALSE}
 options(scipen = 999)
 
-rmod1 <- full_df %>% dplyr::select(2:8) %>% 
-    ca.jo(x = ., type = "eigen", 
+rmod_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "trace", 
                      ecdet = "const", 
-                     spec = "longrun", K = 2, 
+                     spec = "transitory", K = 2, 
                      dumvar = exog_df[,2:4]) %>% 
     urca::cajorls(.)
 
-rmod2 <- full_df %>% dplyr::select(2:8) %>% 
-    ca.jo(x = ., type = "eigen", 
+rmod2_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "trace", 
                      ecdet = "const", 
-                     spec = "longrun", K = 2, 
+                     spec = "transitory", K = 2, 
                      dumvar = exog_df[,2:8]) %>% 
     urca::cajorls(.)
 
-rmod7 <- full_df %>% dplyr::select(2:7|9) %>% 
-    ca.jo(x = ., type = "eigen", 
+rmod_forced <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "trace", 
                      ecdet = "const", 
-                     spec = "longrun", K = 2, 
+                     spec = "transitory", K = 4, 
+                     dumvar = exog_df[,2:4]) %>% 
+    urca::cajorls(.)
+
+rmod2_forced <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "trace", 
+                     ecdet = "const", 
+                     spec = "transitory", K = 4, 
                      dumvar = exog_df[,2:8]) %>% 
     urca::cajorls(.)
 
-rmod3 <- full_df %>% dplyr::select(2:7 | 10) %>% 
-    ca.jo(x = ., type = "eigen", 
+rmod2_auto <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "trace", 
                      ecdet = "const", 
-                     spec = "longrun", K = 2, 
+                     spec = "transitory", K = 2, 
                      dumvar = exog_df[,2:8]) %>% 
     urca::cajorls(.)
 
-rmod4 <- full_df %>% dplyr::select(2:7 | 11) %>% 
-    ca.jo(x = ., type = "eigen", 
-                     ecdet = "const", 
-                     spec = "longrun", K = 2, 
-                     dumvar = exog_df[,2:8]) %>% 
-    urca::cajorls(.)
+rmod1beta <- rmod_alt$beta
+rmod2beta <- rmod2_alt$beta
+rmod3beta <- rmod_forced$beta
+rmod4beta <- rmod2_forced$beta
+rmod5beta <- rmod2_auto$beta
 
-rmod5 <- full_df %>% dplyr::select(2:7 | 12) %>% 
-    ca.jo(x = ., type = "eigen", 
-                     ecdet = "const", 
-                     spec = "longrun", K = 2, 
-                     dumvar = exog_df[,2:8]) %>% 
-    urca::cajorls(.)
+rmod_joint <- cbind(rmod1beta, 
+                    rmod2beta, 
+                    rmod3beta, 
+                    rmod4beta, 
+                    rmod5beta)
 
-rmod6 <- full_df %>% dplyr::select(2:7|13) %>% 
-    ca.jo(x = ., type = "eigen", 
-                     ecdet = "const", 
-                     spec = "longrun", K = 2, 
-                     dumvar = exog_df[,2:8]) %>% 
-    urca::cajorls(.)
+rmod_out <- data.frame(matrix(unlist(rmod_joint), nrow=8, byrow=F),
+                      row.names = c("LREERS.l1",
+                                    "RIRR.l1",
+                                    "LRGDPPCR.l1",
+                                    "OPENY.l1",
+                                    "FBYA.l1",
+                                    "NFAOFPY.l1",
+                                    "LPR2COMM5.l1",
+                                    "constant"))
 
-rmod1beta <- rmod1$beta
-rmod2beta <- rmod2$beta
-rmod3beta <- rmod3$beta
-rmod4beta <- rmod4$beta
-rmod5beta <- rmod5$beta
-rmod6beta <- rmod6$beta
-rmod7beta <- rmod7$beta
+names(rmod_out) = c("Alt", "Alt_Outliers", "Forced", "Forced_Outliers",
+                    "Auto_Outliers")
+rmod_out <- rmod_out %>% 
+    mutate(across(names(.), function(x) round(x, 2)))
 options(scipen = 999)
 ```
 
-The authors specify that the model they are estimating is for the long-run
-cointegration relationship, and so, the specification parameter chose is 
-"long-run". 
-
 ```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
-stargazer(cbind(rmod1beta, rmod2beta, rmod3beta, rmod4beta, rmod5beta), header = F,
+stargazer(rmod_out, header = F,
           style = "aer",
-          title = "Normalised Cointegration Relation Vector",
-          column.labels = c(),
+          title = "Normalised Cointegration Relation Vectors",
+          # column.labels = c,
           add.lines = list(c("Short-term impact of NFAOFPY on REERS ", 0)),
           font.size = "small")
-stargazer(cbind(rmod6beta, rmod7beta),
-          title = "Estimate of the Normalised Cointegration Relation Vector")
 ```
 
-```{r}
-# blrtest(ca.jo_custom(df = full_df, i = "8"))
-```
-
-
-
-# 5. Norm, Eval/interpret content/forecasts, test further restrictions
-
-```{r}
-#alrtest()
-```
-
+The cointegration vector for the forced models is very similar to that
+demonstrated in the original paper with the exception of the coefficient
+on the log of the relative real GDP per capita. 
 
 ```{r}
 
+rmod1beta <- rmod_alt$
+rmod2beta <- rmod2_alt$beta
+rmod3beta <- rmod_forced$beta
+rmod4beta <- rmod2_forced$beta
+rmod5beta <- rmod2_auto$beta
+
+rtest_2alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "transitory", K = 2, 
+                     dumvar = exog_df[,2:8])
+# alrtest(rtest_alt, r = 2, A = A)
+
 ```
 
+
+
+# 5. alrtest() for test of Weak exogeneity
+
+```{r}
+   A <-  matrix(byrow = TRUE,
+                c(1, rep(0, 6)), 1,8)
+A
+```
+
+# Conclusion
+
+The next crucial step is to apply the `alrtest()` to the forced model (and
+every alternative specification) to test for the presence of weak exogeneity
+in the model. @duples mentions some concerns regarding the weak exogeneity 
+assumption that @mainpaper fails to address. An alternative model is likely
+better suited for this approach. The next step might be to try some non-paramteric
+model, or by referring to the economic theory again. The problem with extending
+to additional lags when a simpler model is not well suited is a loss of
+bias. The best alternatives suggests obtaining better data. To this end, the
+solution most likely lies in improving or expanding the search within economic
+reasoning. A model is after all, not very useful if it does not make sense.
 
 
 # Directly from [@mainpaper]
@@ -804,43 +886,6 @@ stargazer(cbind(rmod6beta, rmod7beta),
     
 
 
-
-
-
-
-# Old Stuff
-
-<!-- ## Log of Real Effective Exchange Rate for SA (LREER) -->
-
-<!-- Importing the `LREER` time series: -->
-
-<!-- ```{r} -->
-<!-- # LREER <- lreer_fetch() -->
-<!-- # # # check whetther there are any `NA` vales in the dataset -->
-<!-- # # LREER %>% select(Value) %>% any(is.na(.)) -->
-<!-- # LREER -->
-<!-- ``` -->
-
-
-<!-- cleaning the lreer dataset -->
-<!-- ```{r} -->
-<!-- # Convert the date column to the correct format -->
-<!-- # LREER <- lreer_wrangle_date(LREER) -->
-<!-- #  -->
-<!-- # # And change the base year from 2015 to 1995 as in the paper -->
-<!-- # LREER <-lreer_rebase(LREER) -->
-<!-- # LREER -->
-<!-- ``` -->
-
-
-
-<!-- ## Real Interest Rate Relative to Trading Partners -->
-
-<!-- ```{r} -->
-<!-- # RIRR <- rirr_fetch() -->
-<!-- # RIRR -->
-<!-- ``` -->
-
 \newpage
 
 # References
@@ -852,36 +897,22 @@ stargazer(cbind(rmod6beta, rmod7beta),
 
 # Appendix {-} 
 
-# Introduction
+```{r get-labels, echo = FALSE}
+labs = knitr::all_labels()
+labs = setdiff(labs, c("setup", "get-labels", "funcs"))
+```
 
-* What did I do?
+```{r all-code, ref.label=labs, eval=FALSE}
+```
 
-
-* why did I do this?
-
-
-# Literature Review
-
-
-## What did the Authors do?
-
-
-## Motivation
-* Importance
-* Methods
-* Novel Contribution(s)
-
-
-## Critical Evaluation
-
-* Robustness checks/extensions
-
-
-
-## Variable Names (SECTION TO BE DELETED)
-
-```{r include=F}
-as_tibble(names(full_df))
+```{r funcs}
+joint_adf_diff
+joint_adf
+plot_endog1
+plot_endog2
+plot_endog_joint
+plot_endog1_log
+plot_endog2_log
 ```
 
 
