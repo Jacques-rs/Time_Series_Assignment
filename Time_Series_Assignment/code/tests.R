@@ -78,3 +78,23 @@ joint_adf <- function(df){
 
     return(final)
 }
+
+ca.jo_custom <- function(df = full_df, i = c("8", "9", "10", "11", "12", "13"),
+                         outliers = T){
+    i <- match.arg(i)
+    # i <- as.integer(i)
+    if(outliers){
+        mod <- df %>% dplyr::select(2:7|as.integer(i)) %>%
+            ca.jo(x = ., type = "eigen",
+                  ecdet = "const",
+                  spec = "transitory", K = 2,
+                  dumvar = exog_df[,2:8])
+    }else{
+        mod <- df %>% dplyr::select(2:7|as.integer(i)) %>%
+            ca.jo(x = ., type = "eigen",
+                  ecdet = "const",
+                  spec = "transitory", K = 2,
+                  dumvar = exog_df[,2:4])
+    }
+    return(mod)
+}
