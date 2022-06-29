@@ -244,7 +244,7 @@ checking this models adequacy
 5. etc.
 
 
-# 0. Plotting the Diffirenced Variables (STEP 1.)
+# 1. Plotting the Diffirenced Variables
 
 
 ```{r echo=FALSE, fig.cap="The First Difference of the LREERS \\label{reerdiff}"}
@@ -328,21 +328,50 @@ endog_df; exog_df
 ```
 
 
-# 1.A: Estimating the Unrestricted VAR in Levels and Checking Adequacy
+# 2.A: Estimating the Unrestricted VAR in Levels and Checking Adequacy
 
 
-```{r}
+```{r echo=TRUE}
 options(scipen=999)
-var_aic <- VAR(endog_df[,c(2:8)], type = "const", lag.max = 8, 
-               ic = "AIC", season = 4)
 
-VARselect(endog_df[,c(2:8)], type = "const", lag.max = 4, season = 4)$selection
-VARselect(endog_df[,c(2:8)], type = "const", lag.max = 4, season = 4,
+VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
+VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4,
           exogen = exog_df[,5:8])$selection
 
-var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
+endog_alt <- endog_df %>% mutate(OPENY = log(OPENY))
+VARselect(endog_alt[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
+VARselect(endog_alt[,c(2:8)], type = "const", lag.max = 8, season = 4,
+          exogen = exog_df[,5:8])$selection
+```
+
+The model selection based on the Akaike Information Criteria (AIC) suggests that only
+one lag order be included. Based on the majority of information criterion 
+displayed above, there seems to be no reason to choose a model with higher lag
+order than 2. Therefore, a replication of reaching the suggested lag length 
+from @mainpaper as 4, is not achieved here. Many of the variables have already 
+been scaled to span over similar smaller ranges. The only variable that remains
+relatively large is the openness indicator (`OPENY`). This paper, ads an 
+alternative deviation from @mainpaper and uses natural log standardised value
+for `OPENY` and compares this specification with the data used in the original
+paper. The suggested number of lags with this alternative suggests that two lags
+be included in the VECM, according to the AIC.
+
+Above we display the re
+
+```{r include=FALSE}
+var_aic <- VAR(endog_alt[,c(2:8)], type = "const", lag.max = 8, 
+               ic = "AIC", season = 4)
+
+var_aic2 <- endog_alt %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
                                              exogen = exog_df[,5:8], 
                                              lag.max = 8, ic = "AIC")
+
+var_aic_forced <- VAR(endog_df[,c(2:8)], type = "const", p = 4, 
+               ic = "AIC", season = 4)
+
+var_aic2_forced <- VAR(endog_df[,c(2:8)], type = "const", p = 4, 
+               ic = "AIC", season = 4)
+
 # var_aic3 <- endog_df %>% dplyr::select(2:7 | 9) %>% VAR(., type = "const", season = 4, 
 #                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
@@ -363,15 +392,24 @@ var_aic2 <- endog_df %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 
 #                                              exogen = exog_df[,5:8], 
 #                                              lag.max = 8, ic = "AIC")
 
-# var_aic$p; var_aic2$p; var_aic3$p; var_aic4$p; var_aic5$p; var_aic6$p; var_aic7$p
-# normality.test(var_aic)
+summary(var_aic_forced) #var_aic2_forced$varresult
+summary(var_aic2, digits = max(3, getOption("digits") - 4))
 
 options(scipen=0)
 ```
 
 
-```{r results='asis', message=F, comment='%', tidy=T}
-stargazer(var_aic2$varresult$LREERS, font.size = "tiny")
+```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
+stargazer(
+    var_aic$varresult$LREERS,
+          var_aic2$varresult$LREERS, 
+          # var_aic_forced$varresult$LREERS,
+          var_aic2_forced$varresult$LREERS,
+          title = "VAR Estimation Results", 
+          align = T, 
+          column.sep.width = "1pt",
+          font.size = "tiny", 
+          report = "vc*", header = F, summary = F)
 ```
 
 _Tests to perform:_
@@ -380,11 +418,14 @@ _2. White noise residuals_
 _3. autocorr resid's_
 _4. time-varying params_
 _5. heteroskedasticity_
+_6. test (or check?) for Weak Exog_
 
 
-# 1.B: Tests on VAR
+# 2.B: Tests on VAR
 
 ## White Noise Residuals
+
+### Plot Residuals
 
 ```{r echo=FALSE, fig.cap="VAR Residuals plot - Model 1\\label{resid1}"}
 as_tibble(resid(var_aic)) %>% gather(vary, res) %>% 
@@ -392,10 +433,13 @@ as_tibble(resid(var_aic)) %>% gather(vary, res) %>%
     group_by(vary) %>% 
     ggplot() +
     geom_line(aes(x = index, y = res, color = vary, linetype = vary)) +
-    facet_wrap(~vary, ncol = 2, scales = "free_y") +
-    guides(color=FALSE, linetype=FALSE) +
-    scale_y_continuous("Residual value")
+    facet_wrap(~vary, ncol = 3, scales = "free_y") +
+    guides(color="none", linetype="none") +
+    scale_y_continuous("Residuals") +
+    scale_x_discrete(element_blank())
     # element_text()
+
+# lubridate::
 ```
 
 The plot of the residuals from the first VAR model in figure \ref{resid1} seems
@@ -404,6 +448,8 @@ from the zero mean that could imply otherwise. The clusters of larger residuals
 appear to be concentrated around the timeline that corresponds with the outliers
 identified by @mainpaper. Alternatively, this could add an additional 
 illustration of the underlying effect of a structural change in the data.
+
+
 
 ```{r include=FALSE}
 a1 <- checkresiduals(var_aic$varresult$LREERS, test = "LB", plot = F)
@@ -414,35 +460,83 @@ a5 <- checkresiduals(var_aic$varresult$FBYA, test = "LB", plot = F)
 a6 <- checkresiduals(var_aic$varresult$NFAOFPY, test = "LB", plot = F)
 a7 <- checkresiduals(var_aic$varresult$LPR2COMM5, test = "LB", plot = F)
 
-a1$data.name = "LREERS_Residual"
-a2$data.name = "RIRR_Residual"
-a3$data.name = "LRGDPPCR_Residual"
-a4$data.name = "OPENY_Residual"
-a5$data.name = "FBYA_Residual"
-a6$data.name = "NFAOFPY_Residual"
-a7$data.name = "LPR2COMM5_Residual"
+lb_test <- cbind(a1, a2, a3, a4, a5 , a6, a7)
 
-a1 <- unlist(a1)
-a2 <- unlist(a2)
-a3 <- unlist(a3)
-a4 <- unlist(a4)
-a5 <- unlist(a5)
-a6 <- unlist(a6)
-a7 <- unlist(a7)
+lb_test <- data.frame(matrix(unlist(lb_test), nrow=7, byrow=T),
+                      row.names = c( "LREERS_Residual",
+                                     "RIRR_Residual",
+                                     "LRGDPPCR_Residual",
+                                     "OPENY_Residual",
+                                     "FBYA_Residual",
+                                     "NFAOFPY_Residual",
+                                     "LPR2COMM5_Residual")) %>% 
+    dplyr::select(-c(X2, X4, X5)) %>% 
+    rename("Statistic" = "X1", "p-value" = "X3") %>% 
+    mutate(across(names(.), function(x) as.double(x))) %>% 
+    mutate(across(names(.), function(x) round(x, 9))) %>% 
+    mutate(Statistic = round(Statistic, 2))
+```
 
+```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
+stargazer(lb_test, header = F, font.size = "footnotesize",
+          title = "Ljung-Box Test for White Noise Residuals/Serial Correlation",
+          notes = "Null-hypothesis: The Residuals Display No Serial Corrrelation",
+          summary = F)
+```
 
+```{r include=FALSE}
+# null hypothesis of Portmanteau Test: No serial correlation
+port_test <- serial.test(var_aic)
+port_test2 <- serial.test(var_aic2)
+port_test_forced <- serial.test(var_aic2_forced)
+port_test2_forced <- serial.test(var_aic2_forced)
+test <- cbind(port_test$serial, port_test2$serial, 
+              port_test_forced$serial,
+              port_test2_forced$serial)
+unlist(port_test$serial)
 
-# a1 <- tidy_stats(a1)
+pmt_test <- data.frame(matrix(unlist(test), nrow=5, byrow=F),
+                      row.names = c("Statistic",
+                                    "Degrees of Freedom",
+                                    "p_value",
+                                    "Test",
+                                    "Model"))
+names(pmt_test)[1] = "x"
+pmt_test <- pmt_test %>% 
+    # Sensitive to change!!!!!
+    filter(c(rep(T, 3), F, F))
+names(pmt_test)[1] = "Residuals of VAR Object 'var_aic'"
+names(pmt_test)[2] = "Residuals of VAR Object 'var_aic2'"
+names(pmt_test)[3] = "Residuals of VAR Object 'var_aic_forced'"
+names(pmt_test)[4] = "Residuals of VAR Object 'var_aic2_forced'"
+```
+
+```{r message=FALSE, comment='%', include=FALSE, results='asis', tidy=T}
+
+stargazer(pmt_test, header = FALSE, summary = F,
+          title = "Asymptotic Portmanteau Test for Serial Correlation in VAR Model Residuals",
+          notes = "Null-hypothesis: The Residuals Display No Serial Corrrelation")
 
 ```
 
-```{r results='asis', message=F, comment='%', tidy=T}
-stargazer(a1, header = F)
+```{r echo=FALSE}
+# port_test <- serial.test(var_aic, lags.pt = 4)
+# port_test$resid %>%
+#     as.tibble() %>% 
+#     gather(Variable, Residual) %>% 
+#     summarise(Index = rep(1:127, times = 7), Variable, Residual) %>% 
+#     ggplot() +
+#     geom_line(aes(x = Index, y = Residual, color = Variable, linetype = Variable))+
+#     facet_wrap(~Variable, ncol = 3, scales = "free_y") +
+#     scale_linetype(element_blank()) +
+#     scale_color_hue(element_blank())
+
+ggAcf(port_test$resid) +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(size = 3))
+    
 ```
-
-
-_might still plot `acf` of residuals_
-
 
 
 ## Check for the presence of Structural Break
@@ -452,82 +546,147 @@ _might still plot `acf` of residuals_
 ```
 
 
-# Determining the order of CI
+# 3. Determining the order of CI
 
 ```{r}
 
-vec <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", spec = "transitory",
+jo <- endog_alt %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
+                                                 ecdet = "const", 
+                                                 spec = "longrun",
              K = 2, season = 4)
 
-vec2 <- full_df %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
+jo2 <- endog_alt %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
                                              ecdet = "const", 
-                                             spec = "transitory", K = 2, 
+                                             spec = "longrun", K = 2, 
                                              season = 4, 
                                              dumvar = exog_df[,5:8])
 
-summary(vec2)
-```
+jo_forced <- ca.jo(full_df[,2:8], type = "trace", ecdet = "const", 
+                   spec = "longrun",
+                    K = 4, season = 4)
 
+jo2_forced <- full_df %>% dplyr::select(2:8) %>% ca.jo(., type = "trace", 
+                                             # ecdet = "const", 
+                                             spec = "longrun",
+                                             K = 4, 
+                                             season = 4,
+                                             dumvar = exog_df[,5:8])
+summary(jo_forced)
+summary(jo2_forced)
 
-<!-- ```{r results='asis', message=F, comment='%', tidy=T} -->
-
-<!-- stargazer(summ_vec, header = FALSE, summary = F) -->
-
-<!-- ``` -->
-
-# Estimating VECM
-
-
-```{r}
-mod1 <- full_df %>% dplyr::select(2:8) %>% 
-    tsDyn::VECM(., lag = 4, estim = "ML",
-                include = "const", r=1, 
-                exogen = exog_df[,2:4])
-summary(mod1)
-# mod2 <- full_df %>% dplyr::select(2:8) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod2)
-
-# mod3 <- full_df %>% dplyr::select(2:7 | 9) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod3)
-
-# mod4 <- full_df %>% dplyr::select(2:7 | 10) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod4)
-
-# mod5 <- full_df %>% dplyr::select(2:7 | 11) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod5)
-
-# mod6 <- full_df %>% dplyr::select(2:7 | 12) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod6)
-
-# mod7 <- full_df %>% dplyr::select(2:7 | 13) %>% 
-#     tsDyn::VECM(., lag = 4, estim = "ML",
-#                 include = "const", r=1, 
-#                 exogen = exog_df[,2:8])
-# summary(mod7)
 
 ```
 
 
+```{r results='asis', message=F, comment='%', tidy=T}
 
+# stargazer(summ, header = FALSE, summary = F)
+
+```
+
+# 4. Estimating VECM with Restriction
 
 ```{r}
 
 ```
+
+
+
+
+```{r include=FALSE}
+options(scipen = 999)
+
+rmod1 <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:4]) %>% 
+    urca::cajorls(.)
+
+rmod2 <- full_df %>% dplyr::select(2:8) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod7 <- full_df %>% dplyr::select(2:7|9) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod3 <- full_df %>% dplyr::select(2:7 | 10) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod4 <- full_df %>% dplyr::select(2:7 | 11) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod5 <- full_df %>% dplyr::select(2:7 | 12) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod6 <- full_df %>% dplyr::select(2:7|13) %>% 
+    ca.jo(x = ., type = "eigen", 
+                     ecdet = "const", 
+                     spec = "longrun", K = 2, 
+                     dumvar = exog_df[,2:8]) %>% 
+    urca::cajorls(.)
+
+rmod1beta <- rmod1$beta
+rmod2beta <- rmod2$beta
+rmod3beta <- rmod3$beta
+rmod4beta <- rmod4$beta
+rmod5beta <- rmod5$beta
+rmod6beta <- rmod6$beta
+rmod7beta <- rmod7$beta
+options(scipen = 999)
+```
+
+The authors specify that the model they are estimating is for the long-run
+cointegration relationship, and so, the specification parameter chose is 
+"long-run". 
+
+```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
+stargazer(cbind(rmod1beta, rmod2beta, rmod3beta, rmod4beta, rmod5beta), header = F,
+          style = "aer",
+          title = "Normalised Cointegration Relation Vector",
+          column.labels = c(),
+          add.lines = list(c("Short-term impact of NFAOFPY on REERS ", 0)),
+          font.size = "small")
+stargazer(cbind(rmod6beta, rmod7beta),
+          title = "Estimate of the Normalised Cointegration Relation Vector")
+```
+
+```{r}
+# blrtest(ca.jo_custom(df = full_df, i = "8"))
+```
+
+
+
+# 5. Norm, Eval/interpret content/forecasts, test further restrictions
+
+```{r}
+#alrtest()
+```
+
+
+```{r}
+
+```
+
 
 
 # Directly from [@mainpaper]
