@@ -81,9 +81,10 @@ fontsize: 11pt                  # Set fontsize
 linestretch: 1.2                # Set distance between lines.
 link-citations: TRUE            # This creates dynamic links to the papers in reference list.
 
-### Adding additional latex packages:
-# header-includes:
-#    - \usepackage{colortbl} # Add additional packages here.
+## Adding additional latex packages:
+header-includes:
+   - \usepackage{colortbl}
+   - \usepackage{dcolumn} # Add additional packages here.
 
 output:
   pdf_document:
@@ -106,7 +107,7 @@ library(pacman)
 
 pacman::p_load(tidyverse, dplyr, stargazer, readr, lubridate, bookdown,
                tsDym, urca, tseries, vars, gridExtra, varEst, strucchange, 
-               forecast, tidystats) 
+               forecast, tidystats, funtimes, texreg)
 fmxdat::source_all("./code")
 ```
 
@@ -265,7 +266,7 @@ order (i.e. $REER \sim I(1)$). The deterministic component is most likely a
 constant term. Each of these variables seem somewhat stationary after their 
 first difference is been determined.
 
-```{r echo=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
+```{r include=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_joint}"}
 # adf_temp <- urca::ur.df(full_df[,"LRGDPPCR"], type = "trend", lags = 8, selectlags = "BIC")
 # Better format this later
 joint_adf_test <- joint_adf(full_df)
@@ -274,14 +275,26 @@ joint_adf_test
 ```
 
 The Augmented Dicky-Fuller tests for the differenced time series values of all 
-the variables in the system are displayed in figure \ref{adf_diff} below.
+the variables in the system are displayed in figure \ref{adf_diff_joint} below.
 
-```{r echo=FALSE, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_diff_joint}"}
+```{r include=F, fig.cap="The Augmented Dicky-Fuller Test \\label{adf_diff_joint}"}
 # Better format this later
-joint_adf_test <- joint_adf_diff(full_df)
+joint_adf_diff_test <- joint_adf_diff(full_df)
 # knitr::kable(joint_adf_test)
-joint_adf_test
+joint_adf_diff_test
 ```
+
+```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
+stargazer(
+    joint_adf_test,
+    joint_adf_diff_test,
+          title = "ADF Test on the Model Time Series Variables", 
+          align = T, 
+          # column.sep.width = "1pt",
+          # font.size = "tiny", 
+          header = F, summary = F)
+```
+
 
 To test this hypothesis, that each of these series are only stationary after the
 first difference, the Augmented Dickey Fuller test is employed. The Augmented 
@@ -293,31 +306,15 @@ NFAOFPY` i.e. the net foreign assets are stationary after the first difference.
 For those that are stationary, the null hypothesis was rejected at the 1% 
 significance level, barring the openness indicator for which the p-value is less
 than 0.05. This might be due to the large deviations created by the apartheid 
-era sanctions [@mainpaper]. 
+era sanctions [@mainpaper]. The problem with only using the Dicky-Fuller test
+in this case is that this test has a lower size when there exists structural
+breaks in the data. To mitigate this problem the ADF-GLS test is implemented
+to confirm whether the series are non-stationary before the first difference.
 
+```{r}
 
-## VECM Model Estimation in Theory:
+```
 
-*paper table 1 col's:*
-
-*1. Var's + Seasonal(4) + lags(4)*
-*2. ^Above^ + outlier_dummies -> Trace test* $\implies$ *two CI vectors*
-
-
-_Multiple ways to estimate VEC models:_
-
-_First approach: ordinary least squares (yields accurate result) but does not allow to estimate the cointegrating relations among the variables._
-_The estimated generalised least squares (EGLS) approach would be an alternative._
-
-_Most popular estimator: MLE of Johansen (1995)_
-_[In R: ca.jo function of the urca package of Pfaff (2008a)]_
-_Alternatively, `VECM` of tsDyn package of Di Narzo et al. (2020)_
-
-_Before VECM:_
-_1. Determine lag order p -> Det. rank of CI matrix r_
-_2. deterministic terms have to be specified._
-_3. Choose lag order: est. the VAR in levels_
-_4. Choose lag specification that minimises an Information criterion_
 
 
 
@@ -328,41 +325,76 @@ endog_df; exog_df
 ```
 
 
-# 2.A: Estimating the Unrestricted VAR in Levels and Checking Adequacy
+# 2.A: Estimating the Unrestricted VAR in Levels \label{var_est}
 
 
 ```{r echo=TRUE}
 options(scipen=999)
 
-VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
-VARselect(endog_df[,c(2:8)], type = "const", lag.max = 8, season = 4,
-          exogen = exog_df[,5:8])$selection
+var_sel <- endog_df %>% dplyr::select(2:8) %>% 
+    VARselect(., type = "both", lag.max = 8, season = 4)
+var_sel$selection
+
+var_sel2 <- endog_df %>% dplyr::select(2:8) %>% 
+    VARselect(., type = "both", lag.max = 8, season = 4,
+          exogen = exog_df[,5:8])
+var_sel2$selection
 
 endog_alt <- endog_df %>% mutate(OPENY = log(OPENY))
-VARselect(endog_alt[,c(2:8)], type = "const", lag.max = 8, season = 4)$selection
-VARselect(endog_alt[,c(2:8)], type = "const", lag.max = 8, season = 4,
+VARselect(endog_alt[,c(2:8)], type = "both", lag.max = 8, season = 4)$selection
+VARselect(endog_alt[,c(2:8)], type = "both", lag.max = 8, season = 4,
           exogen = exog_df[,5:8])$selection
 ```
 
-The model selection based on the Akaike Information Criteria (AIC) suggests that only
-one lag order be included. Based on the majority of information criterion 
+The model selection based on the Akaike Information Criteria (AIC) suggests that 
+two lags be included in the model. The AIC and Schwartz Criterion (SC) tends to 
+select over-paramterised models however, but the Schwartz Criterion tends to yield 
+asymptotically consistent results compared to the AIC. For the purpose of the 
+replication the AIC will be used. It is worth noting that this might yield
+more inconsistent results. Based on the all of information criterion 
 displayed above, there seems to be no reason to choose a model with higher lag
-order than 2. Therefore, a replication of reaching the suggested lag length 
-from @mainpaper as 4, is not achieved here. Many of the variables have already 
+order than 2. Therefore, using the suggested lag length from @mainpaper, 4, 
+is in disagreement with the replication above. Many of the variables have already 
 been scaled to span over similar smaller ranges. The only variable that remains
-relatively large is the openness indicator (`OPENY`). This paper, ads an 
-alternative deviation from @mainpaper and uses natural log standardised value
-for `OPENY` and compares this specification with the data used in the original
-paper. The suggested number of lags with this alternative suggests that two lags
-be included in the VECM, according to the AIC.
+relatively large is the openness indicator (`OPENY`). This paper thus continues 
+with an additional variable specification compared to that of @mainpaper. This 
+alternative includes a natural log standardised value for `OPENY` (i.e. 
+`LOPENY`) instead, and compares this specification with the model obtained from
+data used in the original paper. The suggested number of lags with this 
+alternative specification results in a choice of two lags to be included in the 
+VECM, according to the AIC. The same problem still exists in terms of the conflict
+between the AIC and SC.
 
-Above we display the re
+Adding additional lags is usually an alternative option for when the 
+residuals display serial correlation [@johansenMLE]. However, @mainpaper do not
+explicitly mention this concession and its reasoning. It is important to note 
+that adding additional lags when it is not explicitly suggested so by the information 
+criterion is not recommended in the multivariate case [@johansenMLE]. The tests
+for serial correlation that follows in the next section provide a likely 
+reason for the decision to include four lags. 
+
+_Using the results as they are displayed above leads to a series of VAR model_
+_with serial correlation exisiting for each of these mentioned above._ 
+
+
 
 ```{r include=FALSE}
-var_aic <- VAR(endog_alt[,c(2:8)], type = "const", lag.max = 8, 
+
+
+var_aic_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    VAR(., type = "both", lag.max = 8, 
                ic = "AIC", season = 4)
 
-var_aic2 <- endog_alt %>% dplyr::select(2:8) %>% VAR(., type = "const", season = 4, 
+var_aic2_alt <- endog_alt %>% dplyr::select(2:8) %>% 
+    VAR(., type = "both", season = 4, 
+             exogen = exog_df[,5:8], 
+             lag.max = 8, ic = "AIC")
+
+var_aic <- full_df %>% dplyr::select(2:8) %>% 
+    VAR(., type = "both", lag.max = 8, 
+               ic = "AIC", season = 4)
+
+var_aic2 <- full_df %>% dplyr::select(2:8) %>% VAR(., type = "both", season = 4, 
                                              exogen = exog_df[,5:8], 
                                              lag.max = 8, ic = "AIC")
 
@@ -400,16 +432,15 @@ options(scipen=0)
 
 
 ```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
-stargazer(
-    var_aic$varresult$LREERS,
-          var_aic2$varresult$LREERS, 
-          # var_aic_forced$varresult$LREERS,
+stargazer(var_aic2$varresult$LREERS, 
+          var_aic2_alt$varresult$LREERS,
           var_aic2_forced$varresult$LREERS,
           title = "VAR Estimation Results", 
           align = T, 
           column.sep.width = "1pt",
           font.size = "tiny", 
-          report = "vc*", header = F, summary = F)
+          report = "vc*", header = F, summary = F, 
+          omit = ".*[.][l][3]")
 ```
 
 _Tests to perform:_
@@ -423,7 +454,7 @@ _6. test (or check?) for Weak Exog_
 
 # 2.B: Tests on VAR
 
-## White Noise Residuals
+## I. White Noise Residuals
 
 ### Plot Residuals
 
@@ -447,49 +478,92 @@ very close to a white noise process, however, there do appear to be deviations
 from the zero mean that could imply otherwise. The clusters of larger residuals
 appear to be concentrated around the timeline that corresponds with the outliers
 identified by @mainpaper. Alternatively, this could add an additional 
-illustration of the underlying effect of a structural change in the data.
+illustration of the underlying effect of a structural change in the data. The 
+nature of the @johansenMLE method, however, allows for some non-normality in
+the errors as @mainpaper point out. The asymptotic nature of their method allows 
+for this, however, the assumption of serial correlation is not allowed to be 
+violated [@johansenMLE].
 
 
+### Serial Correlation Tests:
 
 ```{r include=FALSE}
-a1 <- checkresiduals(var_aic$varresult$LREERS, test = "LB", plot = F)
-a2 <- checkresiduals(var_aic$varresult$RIRR, test = "LB", plot = F)
-a3 <- checkresiduals(var_aic$varresult$LRGDPPCR, test = "LB", plot = F)
-a4 <- checkresiduals(var_aic$varresult$OPENY, test = "LB", plot = F)
-a5 <- checkresiduals(var_aic$varresult$FBYA, test = "LB", plot = F)
-a6 <- checkresiduals(var_aic$varresult$NFAOFPY, test = "LB", plot = F)
-a7 <- checkresiduals(var_aic$varresult$LPR2COMM5, test = "LB", plot = F)
+# a1 <- checkresiduals(var_aic$varresult$LREERS, test = "LB", plot = F)
+# a2 <- checkresiduals(var_aic$varresult$RIRR, test = "LB", plot = F)
+# a3 <- checkresiduals(var_aic$varresult$LRGDPPCR, test = "LB", plot = F)
+# a4 <- checkresiduals(var_aic$varresult$OPENY, test = "LB", plot = F)
+# a5 <- checkresiduals(var_aic$varresult$FBYA, test = "LB", plot = F)
+# a6 <- checkresiduals(var_aic$varresult$NFAOFPY, test = "LB", plot = F)
+# a7 <- checkresiduals(var_aic$varresult$LPR2COMM5, test = "LB", plot = F)
+# 
+# lb_test <- cbind(a1, a2, a3, a4, a5 , a6, a7)
+# 
+# lb_test <- data.frame(matrix(unlist(lb_test), nrow=7, byrow=T),
+#                       row.names = c( "LREERS_Residual",
+#                                      "RIRR_Residual",
+#                                      "LRGDPPCR_Residual",
+#                                      "OPENY_Residual",
+#                                      "FBYA_Residual",
+#                                      "NFAOFPY_Residual",
+#                                      "LPR2COMM5_Residual")) %>% 
+#     dplyr::select(-c(X2, X4, X5)) %>% 
+#     rename("Statistic" = "X1", "p-value" = "X3") %>% 
+#     mutate(across(names(.), function(x) as.double(x))) %>% 
+#     mutate(across(names(.), function(x) round(x, 9))) %>% 
+#     mutate(Statistic = round(Statistic, 2))
+```
 
-lb_test <- cbind(a1, a2, a3, a4, a5 , a6, a7)
+```{r include=F}
+# null hypothesis of Portmanteau Test: No serial correlation
+es_test <- serial.test(var_aic, type = "ES")
+es_test2 <- serial.test(var_aic2, type = "ES")
+es_test_forced <- serial.test(var_aic2_forced, type = "ES")
+es_test2_forced <- serial.test(var_aic2_forced, type = "ES")
+tests <- cbind(es_test$serial, es_test2$serial, 
+              es_test_forced$serial,
+              es_test2_forced$serial)
+unlist(es_test$serial)
 
-lb_test <- data.frame(matrix(unlist(lb_test), nrow=7, byrow=T),
-                      row.names = c( "LREERS_Residual",
-                                     "RIRR_Residual",
-                                     "LRGDPPCR_Residual",
-                                     "OPENY_Residual",
-                                     "FBYA_Residual",
-                                     "NFAOFPY_Residual",
-                                     "LPR2COMM5_Residual")) %>% 
-    dplyr::select(-c(X2, X4, X5)) %>% 
-    rename("Statistic" = "X1", "p-value" = "X3") %>% 
+es_tests <- data.frame(matrix(unlist(tests), nrow=6, byrow=F),
+                      row.names = c("Statistic",
+                                    "DoF1",
+                                    "DoF2",
+                                    "p_value",
+                                    "Test",
+                                    "Model"))
+names(es_tests)[1] = "x"
+es_tests <- es_tests %>% 
+    # Sensitive to change!!!!!
+    filter(c(rep(T, 5), F)) %>% 
     mutate(across(names(.), function(x) as.double(x))) %>% 
-    mutate(across(names(.), function(x) round(x, 9))) %>% 
-    mutate(Statistic = round(Statistic, 2))
+    mutate(across(names(.), function(x) round(x, 4)))
+es_tests["Test",] = "Edgerton-Shukur_F"
+names(es_tests)[1] = "VAR_Residuals_Auto"
+names(es_tests)[2] = "VAR_Residuals_Auto_Outliers"
+names(es_tests)[3] = "VAR_Residuals_Forced"
+names(es_tests)[4] = "VAR_Residuals_Forced_Outliers"
+es_tests <- es_tests %>% 
+    rownames_to_column() %>% 
+    gather(Model, value, -rowname) %>% 
+    spread(rowname, value)
 ```
 
-```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T}
-stargazer(lb_test, header = F, font.size = "footnotesize",
-          title = "Ljung-Box Test for White Noise Residuals/Serial Correlation",
-          notes = "Null-hypothesis: The Residuals Display No Serial Corrrelation",
-          summary = F)
-```
+<!-- ```{r echo=FALSE, message=FALSE, comment='%', results='asis', tidy=T} -->
+<!-- stargazer(es_tests, header = F, font.size = "footnotesize", -->
+<!--           title = "Edgerton-Shukur F test for Serial Correlation", -->
+<!--           notes = c("Null-hypothesis: The Residuals Display No Serial Corrrelation", -->
+<!--                     "Adjusted for small sample bias"), -->
+<!--           summary = F) -->
+<!-- ``` -->
+
+
 
 ```{r include=FALSE}
 # null hypothesis of Portmanteau Test: No serial correlation
-port_test <- serial.test(var_aic)
-port_test2 <- serial.test(var_aic2)
-port_test_forced <- serial.test(var_aic2_forced)
-port_test2_forced <- serial.test(var_aic2_forced)
+port_test <- serial.test(var_aic, type = "PT.adjusted")
+port_test2 <- serial.test(var_aic2, type = "PT.adjusted")
+port_test_forced <- serial.test(var_aic2_forced, type = "PT.adjusted")
+port_test2_forced <- serial.test(var_aic2_forced, type = "PT.adjusted")
 test <- cbind(port_test$serial, port_test2$serial, 
               port_test_forced$serial,
               port_test2_forced$serial)
@@ -497,27 +571,45 @@ unlist(port_test$serial)
 
 pmt_test <- data.frame(matrix(unlist(test), nrow=5, byrow=F),
                       row.names = c("Statistic",
-                                    "Degrees of Freedom",
+                                    "DoF1",
                                     "p_value",
                                     "Test",
                                     "Model"))
 names(pmt_test)[1] = "x"
 pmt_test <- pmt_test %>% 
     # Sensitive to change!!!!!
-    filter(c(rep(T, 3), F, F))
-names(pmt_test)[1] = "Residuals of VAR Object 'var_aic'"
-names(pmt_test)[2] = "Residuals of VAR Object 'var_aic2'"
-names(pmt_test)[3] = "Residuals of VAR Object 'var_aic_forced'"
-names(pmt_test)[4] = "Residuals of VAR Object 'var_aic2_forced'"
+    filter(c(rep(T, 4), F)) %>% 
+    mutate(across(names(.), function(x) as.double(x))) %>% 
+    mutate(across(names(.), function(x) round(x, 4)))
+pmt_test["DoF2",] = "N_A"
+names(pmt_test)[1] = "VAR_Residuals_Auto"
+names(pmt_test)[2] = "VAR_Residuals_Auto_Outliers"
+names(pmt_test)[3] = "VAR_Residuals_Forced"
+names(pmt_test)[4] = "VAR_Residuals_Forced_Outliers"
+pmt_test["Test",] = "Portmanteau_(adj)"
+pmt_test <- pmt_test %>% 
+    rownames_to_column() %>% 
+    gather(Model, value, -rowname) %>% 
+    spread(rowname, value)
 ```
 
-```{r message=FALSE, comment='%', include=FALSE, results='asis', tidy=T}
-
-stargazer(pmt_test, header = FALSE, summary = F,
-          title = "Asymptotic Portmanteau Test for Serial Correlation in VAR Model Residuals",
-          notes = "Null-hypothesis: The Residuals Display No Serial Corrrelation")
-
+```{r message=FALSE, comment='%', results='asis', tidy=T}
+stargazer(rbind(pmt_test, es_tests),
+          header = FALSE, summary = F,
+          title = "Serial Correlation Tests on VAR Models' Residuals \\label{serial}",
+          notes = c("Null-hypotheses: The Residuals Display No Serial Corrrelation",
+                    "Note: Both tests adjust for small sample bias"))
 ```
+
+As pointed out in section \ref{var_est}, the inclusion of additional lags up to 
+4, is most likely to solve the problem of serial correlation. From table 
+\ref{serial}, the Models with the suffix `Forced` or `Forced_Outliers` are the
+VAR models with four lags. The latter being those with added dummies for the 
+outlier observations. The table above displays the results from the 'Adjusted Portmanteau Test' and the @es_test F-test. Both of these tests incorporate for 
+small sample corrections that are necessary in the case of this dataset [@ts_an]. Both tests yield p-values greater than 0.05 for the model specified with four lags,
+and outlier dummies. The rejection is not as strong in the case of the @es_test F-test. 
+
+### ACF of Residuals Plot
 
 ```{r echo=FALSE}
 # port_test <- serial.test(var_aic, lags.pt = 4)
@@ -539,7 +631,7 @@ ggAcf(port_test$resid) +
 ```
 
 
-## Check for the presence of Structural Break
+## II Check for the presence of Structural Break
 
 ```{r Testing for Structural Break}
 
@@ -791,3 +883,27 @@ stargazer(cbind(rmod6beta, rmod7beta),
 ```{r include=F}
 as_tibble(names(full_df))
 ```
+
+
+## VECM Model Estimation in Theory:
+
+*paper table 1 col's:*
+
+*1. Var's + Seasonal(4) + lags(4)*
+*2. ^Above^ + outlier_dummies -> Trace test* $\implies$ *two CI vectors*
+
+
+_Multiple ways to estimate VEC models:_
+
+_First approach: ordinary least squares (yields accurate result) but does not allow to estimate the cointegrating relations among the variables._
+_The estimated generalised least squares (EGLS) approach would be an alternative._
+
+_Most popular estimator: MLE of Johansen (1995)_
+_[In R: ca.jo function of the urca package of Pfaff (2008a)]_
+_Alternatively, `VECM` of tsDyn package of Di Narzo et al. (2020)_
+
+_Before VECM:_
+_1. Determine lag order p -> Det. rank of CI matrix r_
+_2. deterministic terms have to be specified._
+_3. Choose lag order: est. the VAR in levels_
+_4. Choose lag specification that minimises an Information criterion_
